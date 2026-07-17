@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linux &amp; Shell Cheatsheet — Docker Deep Dive</title>
+<link rel="stylesheet" href="../assets/style.css">
+<style>
+  main { max-width: 52rem; }
+  .grow-note { font-size: .85em; color: var(--muted); font-style: italic; }
+  .keys td:first-child { font-family: var(--mono); font-size: .9em; white-space: nowrap; }
+</style>
+</head>
+<body>
+<main>
+
+<p class="kicker">Docker Deep Dive · Reference</p>
+<h1>Linux &amp; Shell Cheatsheet</h1>
+<p class="lede">Everything phase 0 (P1–P7) teaches, in the shape you'll reach for it.
+<span class="grow-note">The Docker CLI gets its own cheatsheet as those lessons arrive; this page is the Linux underneath every Docker command.</span></p>
+
+<div class="callout">
+<p class="title">Your Linux playground</p>
+<p>Real Linux practice happens inside a disposable container — identical on macOS, Windows, and Linux.
+One command in, <code>exit</code> out, nothing on your Mac can break:</p>
+<pre class="cmd" data-label="terminal"><code>docker run -it --rm ubuntu:24.04 bash</code></pre>
+</div>
+
+<h2>Move around, look around <span class="no">· P1</span></h2>
+
+<pre class="cmd" data-label="anatomy"><code>command -f --long-flag argument1 argument2</code></pre>
+
+<table>
+<tr><th>command</th><th>does</th><th>remember</th></tr>
+<tr><td><code>pwd</code></td><td>print working directory — "where am I?"</td><td>prompt ≠ location; trust <code>pwd</code></td></tr>
+<tr><td><code>ls -lah</code></td><td>list: long form, hidden files, human sizes</td><td><code>-l</code> rows are P2's mode strings</td></tr>
+<tr><td><code>cd path</code></td><td>change directory</td><td><code>cd</code> alone → home, <code>cd -</code> → back</td></tr>
+<tr><td><code>mkdir -p a/b/c</code></td><td>make directories, parents included</td><td>no <code>-p</code>: parents must exist</td></tr>
+<tr><td><code>touch f</code></td><td>create empty file (or bump its date)</td><td></td></tr>
+<tr><td><code>cp -r src dst</code></td><td>copy (<code>-r</code> for directories)</td><td>silently overwrites — <code>-i</code> asks</td></tr>
+<tr><td><code>mv old new</code></td><td>move <em>and</em> rename (same command)</td><td></td></tr>
+<tr><td><code>rm -r dir</code></td><td>delete forever — no trash, no undo</td><td>read the line twice before Enter</td></tr>
+<tr><td><code>cat f</code> / <code>less f</code></td><td>dump file / page through it</td><td>in <code>less</code>: space, <code>/find</code>, <code>q</code></td></tr>
+<tr><td><code>head -n 20 f</code> / <code>tail -n 20 f</code></td><td>first / last lines</td><td><code>tail -f</code> = follow live (→ <code>docker logs -f</code>)</td></tr>
+</table>
+
+<table class="keys">
+<tr><th>key</th><th>effect</th></tr>
+<tr><td>Tab</td><td>complete the path/command — if it won't complete, it doesn't exist (your best typo detector)</td></tr>
+<tr><td>↑ / ↓</td><td>walk command history</td></tr>
+<tr><td>Ctrl-R</td><td>search history as you type</td></tr>
+<tr><td>Ctrl-C</td><td>interrupt the foreground process (sends SIGINT — see P4)</td></tr>
+<tr><td>Ctrl-L</td><td>clear screen (history stays)</td></tr>
+</table>
+
+<pre class="cmd" data-label="paths"><code>/etc/nginx/nginx.conf   <span class="comment"># absolute: starts at the root /</span>
+../logs/app.log         <span class="comment"># relative: from where you are (.. = up one)</span>
+~/projects              <span class="comment"># ~ = your home directory</span></code></pre>
+
+<pre class="cmd" data-label="help"><code>ls --help        <span class="comment"># quick flags list — works in containers</span>
+man ls           <span class="comment"># full manual — on your Mac (container images strip docs)</span>
+type ls          <span class="comment"># what IS this command — binary, builtin, or alias?</span></code></pre>
+
+<h2>Files, permissions, root <span class="no">· P2</span></h2>
+
+<pre class="output" data-label="read a mode string"><code>-  rwx  r-x  r--   1  app  staff  4096  Jul 17  deploy.sh
+│   │    │    │       └owner └group
+│   │    │    └─ everyone else: read only
+│   │    └────── group "staff": read + execute
+│   └─────────── owner "app": read + write + execute
+└─ type: - file · d directory · l symlink</code></pre>
+
+<table>
+<tr><th>octal</th><th>triad</th><th>typical use</th></tr>
+<tr><td><code>7</code> = rwx</td><td>read+write+execute</td><td>owner of a script/dir</td></tr>
+<tr><td><code>6</code> = rw-</td><td>read+write</td><td>owner of a data file</td></tr>
+<tr><td><code>5</code> = r-x</td><td>read+execute</td><td>group/others on dirs</td></tr>
+<tr><td><code>4</code> = r--</td><td>read only</td><td>config for others</td></tr>
+<tr><td><code>0</code> = ---</td><td>nothing</td><td>secrets for others</td></tr>
+</table>
+
+<pre class="cmd" data-label="the ones you'll actually type"><code>chmod +x deploy.sh          <span class="comment"># make executable</span>
+chmod 644 app.conf          <span class="comment"># rw-r--r-- : owner edits, world reads</span>
+chmod 600 secret.env        <span class="comment"># rw------- : owner only</span>
+chmod 755 bin/              <span class="comment"># rwxr-xr-x : dirs need x to be entered</span>
+chown -R app:app /data      <span class="comment"># give a tree to user:group (root only)</span>
+id                          <span class="comment"># who am I — uid, gid, groups</span>
+su - dev                    <span class="comment"># become user dev (fresh login shell)</span></code></pre>
+
+<p class="grow-note">Directory triads read differently: r = list names, w = create/delete
+entries, x = enter/traverse. Containers run as <strong>root by default</strong> — the
+whole point of lesson 11's <code>USER</code>.</p>
+
+<h2>Streams, pipes, text <span class="no">· P3</span></h2>
+
+<table>
+<tr><th>fd</th><th>stream</th><th>default</th></tr>
+<tr><td><code>0</code></td><td>stdin — what the process reads</td><td>your keyboard</td></tr>
+<tr><td><code>1</code></td><td>stdout — its results</td><td>your screen</td></tr>
+<tr><td><code>2</code></td><td>stderr — its complaints</td><td>your screen (separately!)</td></tr>
+</table>
+
+<pre class="cmd" data-label="redirection"><code>cmd &gt; out.txt        <span class="comment"># stdout → file (TRUNCATES first)</span>
+cmd &gt;&gt; out.txt       <span class="comment"># append instead</span>
+cmd 2&gt; err.txt       <span class="comment"># stderr → file</span>
+cmd &gt; all.txt 2&gt;&amp;1   <span class="comment"># both → one file (order matters)</span>
+cmd 2&gt; /dev/null     <span class="comment"># discard complaints</span>
+cmd &lt; input.txt      <span class="comment"># stdin ← file</span></code></pre>
+
+<pre class="cmd" data-label="the pipeline pattern"><code>grep " 500 " access.log | cut -d' ' -f7 | sort | uniq -c | sort -rn | head -3
+<span class="comment"># filter → extract field → group (sort THEN uniq) → rank → top 3</span></code></pre>
+
+<table>
+<tr><th>tool</th><th>does</th><th>flags that matter</th></tr>
+<tr><td><code>grep PATTERN f</code></td><td>keep matching lines</td><td><code>-i</code> case-blind · <code>-v</code> invert · <code>-rn</code> recurse+numbers · <code>-c</code> count</td></tr>
+<tr><td><code>wc -l</code></td><td>count lines</td><td></td></tr>
+<tr><td><code>sort</code></td><td>order lines</td><td><code>-n</code> numeric · <code>-r</code> reverse · <code>-u</code> unique</td></tr>
+<tr><td><code>uniq -c</code></td><td>collapse+count <em>adjacent</em> dupes</td><td>always <code>sort</code> first</td></tr>
+<tr><td><code>cut -d' ' -f7</code></td><td>take field 7, space-delimited</td><td></td></tr>
+<tr><td><code>find DIR -name '*.conf'</code></td><td>walk tree, filter</td><td><code>-type f/d</code> · <code>-mtime -1</code> · <code>-size +1M</code></td></tr>
+<tr><td><code>xargs CMD</code></td><td>stdin lines → CMD arguments</td><td><code>docker ps -q | xargs docker stop</code></td></tr>
+</table>
+
+<pre class="cmd" data-label="command substitution"><code>docker rm $(docker ps -aq)   <span class="comment"># $( ) = run inner command, paste its output here</span></code></pre>
+
+<h2>Processes, environment, signals <span class="no">· P4</span></h2>
+
+<pre class="cmd" data-label="see and steer processes"><code>ps aux                  <span class="comment"># every process: PID, CPU, MEM, command</span>
+ps -ef --forest         <span class="comment"># parent→child tree (who started whom)</span>
+sleep 500 &amp;             <span class="comment"># &amp; = run in background, prints its PID</span>
+jobs                    <span class="comment"># this shell's background jobs</span>
+kill PID                <span class="comment"># polite: SIGTERM — "please clean up and exit"</span>
+kill -9 PID             <span class="comment"># brutal: SIGKILL — unignorable, no cleanup</span>
+echo $?                 <span class="comment"># exit code of the last command</span></code></pre>
+
+<table>
+<tr><th>signal</th><th>n</th><th>meaning</th><th>catchable?</th></tr>
+<tr><td>SIGINT</td><td>2</td><td>Ctrl-C from the keyboard</td><td>yes</td></tr>
+<tr><td>SIGTERM</td><td>15</td><td>"please exit" — <code>kill</code>'s and <code>docker stop</code>'s default</td><td>yes — graceful shutdown lives here</td></tr>
+<tr><td>SIGKILL</td><td>9</td><td>kernel removes the process, no appeal</td><td>never</td></tr>
+<tr><td>SIGHUP</td><td>1</td><td>terminal closed / "reload config" by convention</td><td>yes</td></tr>
+</table>
+
+<table>
+<tr><th>exit code</th><th>means</th></tr>
+<tr><td><code>0</code></td><td>success — the only success</td></tr>
+<tr><td><code>1–125</code></td><td>program-defined failure</td></tr>
+<tr><td><code>126</code> / <code>127</code></td><td>found but not executable / command not found</td></tr>
+<tr><td><code>128+N</code></td><td>killed by signal N → <code>137</code> = SIGKILL (OOM!, lesson 10) · <code>143</code> = SIGTERM</td></tr>
+</table>
+
+<pre class="cmd" data-label="environment variables"><code>NAME=harbor             <span class="comment"># shell variable — this shell only</span>
+export NAME=harbor      <span class="comment"># environment variable — inherited by children</span>
+NAME=harbor cmd         <span class="comment"># one-shot: set only for that command</span>
+echo "$NAME"            <span class="comment"># read (quote it — always)</span>
+echo "${PORT:-8000}"    <span class="comment"># read with default if unset (entrypoint gold)</span>
+env | sort              <span class="comment"># everything this process will pass down</span>
+echo "$PATH"            <span class="comment"># where the shell hunts for commands, left→right</span></code></pre>
+
+<h2>Kernel, /proc, namespaces <span class="no">· P5</span></h2>
+
+<pre class="cmd" data-label="the kernel's window"><code>uname -r                     <span class="comment"># kernel version — same in EVERY container on this machine</span>
+ls /proc                     <span class="comment"># one numbered dir per process (ps just reads these)</span>
+cat /proc/1/cmdline          <span class="comment"># what PID 1 really is</span>
+cat /proc/meminfo            <span class="comment"># live kernel memory accounting</span>
+ls -l /proc/$$/ns            <span class="comment"># the namespaces THIS shell lives in</span></code></pre>
+
+<pre class="cmd" data-label="x-ray a command (oslab image, P5 chapter)"><code>strace -c ls                       <span class="comment"># count every syscall ls makes</span>
+strace -e trace=openat cat /etc/hostname   <span class="comment"># watch just the file-opens</span></code></pre>
+
+<pre class="cmd" data-label="build 1/7th of a container by hand"><code>unshare --pid --fork --mount-proc bash   <span class="comment"># new PID namespace: ps shows you as PID 1</span></code></pre>
+
+<table>
+<tr><th>namespace</th><th>isolates</th><th>you met it in</th></tr>
+<tr><td><code>pid</code></td><td>which processes are visible</td><td>lesson 10's <code>docker top</code> vs <code>exec ps</code></td></tr>
+<tr><td><code>net</code></td><td>interfaces, IPs, ports</td><td>why <code>-p</code> exists (lesson 4)</td></tr>
+<tr><td><code>mnt</code></td><td>the filesystem view</td><td>image layers (lessons 2–3)</td></tr>
+<tr><td><code>uts</code></td><td>hostname</td><td>container id as hostname (lesson 1)</td></tr>
+<tr><td><code>user</code></td><td>uid/gid mapping</td><td>rootless mention (lesson 11)</td></tr>
+</table>
+
+<pre class="cmd" data-label="cgroup v2 — limits as files"><code>cat /sys/fs/cgroup/memory.max        <span class="comment"># this group's memory ceiling (bytes or "max")</span>
+cat /sys/fs/cgroup/cgroup.procs      <span class="comment"># PIDs governed by this group</span></code></pre>
+
+<h2>Ports, DNS, packages <span class="no">· P6</span></h2>
+
+<pre class="cmd" data-label="who is listening? (netlab image, P6 chapter)"><code>ip addr                 <span class="comment"># interfaces: lo (127.0.0.1) + eth0</span>
+ss -tlnp                <span class="comment"># tcp listeners: port, PID — the "is it up?" command</span>
+curl -v localhost:8000  <span class="comment"># speak HTTP, show the whole conversation</span>
+getent hosts db         <span class="comment"># resolve a name the way the OS does</span>
+cat /etc/hosts          <span class="comment"># local name overrides (checked first)</span>
+cat /etc/resolv.conf    <span class="comment"># who answers DNS (in Docker nets: 127.0.0.11)</span></code></pre>
+
+<div class="callout warn">
+<p class="title">The bind rule that explains half of all container bugs</p>
+<p>A server that listens on <code>127.0.0.1</code> accepts connections <em>only from
+inside its own network namespace</em> — <code>docker run -p</code> can't reach it.
+Listen on <code>0.0.0.0</code> (all interfaces) and publishing works. Ports below 1024
+need root or <code>CAP_NET_BIND_SERVICE</code>.</p>
+</div>
+
+<pre class="cmd" data-label="apt — Debian/Ubuntu packages"><code>apt-get update                   <span class="comment"># refresh the package index (a local cache!)</span>
+apt-get install -y curl          <span class="comment"># install; -y for scripts/Dockerfiles</span>
+dpkg -L curl                     <span class="comment"># what files did it put where (FHS in action)</span>
+rm -rf /var/lib/apt/lists/*      <span class="comment"># drop the index cache — the lesson-8 slimming move</span></code></pre>
+
+<pre class="cmd" data-label="apk — Alpine equivalent"><code>apk add --no-cache curl</code></pre>
+
+<h2>Scripts &amp; entrypoints <span class="no">· P7</span></h2>
+
+<pre class="cmd" data-label="skeleton every script starts from"><code>#!/usr/bin/env bash
+set -euo pipefail        <span class="comment"># die on error, on unset vars, in broken pipes</span>
+
+name="${1:?usage: $0 NAME}"      <span class="comment"># $1 = first argument, or die with usage</span>
+echo "deploying ${name} to ${ENV:-dev}"</code></pre>
+
+<table>
+<tr><th>test</th><th>true when</th></tr>
+<tr><td><code>[ -f p ]</code> / <code>[ -d p ]</code></td><td>file / directory exists</td></tr>
+<tr><td><code>[ -z "$v" ]</code> / <code>[ -n "$v" ]</code></td><td>string empty / non-empty</td></tr>
+<tr><td><code>[ "$a" = "$b" ]</code></td><td>strings equal (spaces around <code>=</code>!)</td></tr>
+<tr><td><code>if cmd; then…</code></td><td>any command's exit code 0 is "true": <code>if grep -q err log</code></td></tr>
+</table>
+
+<pre class="cmd" data-label="the docker-entrypoint pattern"><code>#!/usr/bin/env bash
+set -e
+echo "preparing config from env…"       <span class="comment"># setup work happens as a script</span>
+exec "$@"                               <span class="comment"># then REPLACE the shell with the real app:</span>
+                                        <span class="comment"># app becomes PID 1 → docker stop's SIGTERM reaches it</span></code></pre>
+
+<pre class="cmd" data-label="CMD: exec form vs shell form"><code>CMD ["python", "app.py"]     <span class="comment"># exec form — python IS PID 1, signals arrive ✓</span>
+CMD python app.py            <span class="comment"># shell form — sh -c wrapper eats SIGTERM ✗</span></code></pre>
+
+<h2>Terms <span class="no">· phase 0 glossary</span></h2>
+
+<table>
+<tr><th>term</th><th>in one line</th></tr>
+<tr><td>terminal</td><td>the program drawing text on your screen; it hosts a shell</td></tr>
+<tr><td>shell</td><td>the command interpreter (zsh, bash): parses your line, runs programs, reports exit codes</td></tr>
+<tr><td>kernel</td><td>the one program that owns hardware, processes, files, and the network; everything else asks it</td></tr>
+<tr><td>syscall</td><td>the only doorway from a program into the kernel (open, read, execve, …)</td></tr>
+<tr><td>process</td><td>a running program: PID + memory + open files + environment + one parent</td></tr>
+<tr><td>PID 1</td><td>the first process in a (namespace's) tree; special signal rules — your container's main process</td></tr>
+<tr><td>signal</td><td>an asynchronous one-byte message to a process (SIGTERM, SIGKILL…)</td></tr>
+<tr><td>environment variable</td><td>per-process key=value strings, copied to children at spawn — 12-factor config's carrier</td></tr>
+<tr><td>namespace</td><td>kernel feature limiting what a process can <em>see</em> (pids, mounts, network…)</td></tr>
+<tr><td>cgroup</td><td>kernel feature limiting what a process can <em>use</em> (memory, CPU)</td></tr>
+<tr><td>socket / port</td><td>a communication endpoint; TCP port = 16-bit number one listener may claim per address</td></tr>
+<tr><td>DNS</td><td>name → IP resolution; containers get a per-network resolver at 127.0.0.11</td></tr>
+<tr><td>package manager</td><td>installs software + its dependencies from an indexed repository (apt, apk)</td></tr>
+</table>
+
+<div class="callout">
+<p class="title">Where each section was taught</p>
+<p>P1 <a href="../lessons/p1-the-terminal-and-the-shell.html">The Terminal &amp; the Shell</a> ·
+P2 <a href="../lessons/p2-files-permissions-and-root.html">Files, Permissions &amp; root</a> ·
+P3 Streams, Pipes &amp; Text Tools <em>(soon)</em> ·
+P4 Processes, Environments &amp; Signals <em>(soon)</em> ·
+P5 Kernel, Syscalls &amp; Namespaces <em>(soon)</em> ·
+P6 Ports, DNS &amp; Packages <em>(soon)</em> ·
+P7 Shell Scripts &amp; Entrypoints <em>(soon)</em></p>
+</div>
+
+</main>
+<footer class="colophon">Docker Deep Dive · Linux &amp; Shell reference · commands verified
+in ubuntu:24.04 containers on the instructor's machine (Engine 20.10.12, kernel 5.10.76-linuxkit),
+July 2026 · prints well — ⌘P</footer>
+<script src="../assets/course-map.js"></script>
+<script src="../assets/nav.js"></script>
+<script src="../assets/snippet.js"></script>
+</body>
+</html>

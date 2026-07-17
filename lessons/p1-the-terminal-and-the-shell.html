@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prereq P1 · The Terminal &amp; the Shell — Docker Deep Dive</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="../assets/quiz.css">
+</head>
+<body data-lesson="p1-the-terminal-and-the-shell">
+<main>
+
+<p class="kicker">Docker Deep Dive · Prerequisites · P1 of 7</p>
+<h1>The Terminal &amp; the Shell</h1>
+<p class="lede">Docker and Kubernetes are driven from one place: a shell. Every
+<code>docker</code> command, every Dockerfile <code>RUN</code> line, every
+<code>kubectl exec</code> lands you here — so before the whale, meet the three programs
+hiding behind your blinking cursor.</p>
+<p class="meta">⏱ ~25 min hands-on · repo chapter
+<a href="https://github.com/pdfarhad/docker-hands-on/tree/main/p1-terminal-and-shell">p1-terminal-and-shell</a>
+· cheatsheet: <a href="../reference/linux-shell-cheatsheet.html">Linux &amp; Shell</a>
+· works on macOS, Windows, and Linux</p>
+
+<div class="progress" aria-label="prerequisite phase progress">
+<span class="here" title="P1 · terminal &amp; shell"></span><span title="P2 · files &amp; permissions"></span><span title="P3 · pipes &amp; text"></span><span title="P4 · processes &amp; signals"></span><span title="P5 · kernel &amp; namespaces"></span><span title="P6 · ports &amp; packages"></span><span title="P7 · scripts &amp; entrypoints"></span>
+<em>prereq P1 / 7</em>
+</div>
+
+<div class="callout">
+<p class="title">Before you start — any OS is fine</p>
+<p>You need Docker Desktop (or Docker Engine on Linux) installed and running — chapter
+<a href="https://github.com/pdfarhad/docker-hands-on/tree/main/00-setup">00-setup</a>.
+Not because this lesson is about Docker, but because your computer probably isn't Linux —
+and even if it is, a container is the fastest <em>disposable</em> Linux machine you'll
+ever own. The main lab runs inside one, so it is <strong>identical on macOS, Windows,
+and Linux</strong>. Grab the chapter:</p>
+<pre class="cmd" data-label="terminal (macOS/Linux: any shell · Windows: PowerShell)"><code>cd docker-hands-on
+git pull
+cd p1-terminal-and-shell</code></pre>
+<p>Every <code>docker …</code> line in this course is the same on all three OSes. If you
+started the course here and haven't done Lesson 1 yet: whenever a
+<code>docker run …</code> line appears, just paste it — Lesson 1 explains every flag.</p>
+</div>
+
+<h2><span class="no">1</span>Three programs pretending to be one</h2>
+
+<p>What you casually call "the terminal" is a sandwich of three very different
+programs:<a class="cite" href="https://linuxcommand.org/tlcl.php">¹</a></p>
+
+<ul>
+<li>The <strong>terminal emulator</strong> (Terminal.app or iTerm on macOS, Windows
+Terminal, GNOME Terminal or Konsole on Linux…) draws text on screen and forwards your
+keystrokes. It understands <em>nothing</em> about commands.</li>
+<li>The <strong>shell</strong> is the interpreter: it reads a line, splits it into words,
+finds the program you named, asks for it to be run, then reports how it went. Which one
+you have depends on your OS — zsh on modern macOS, bash on most Linux distros,
+PowerShell on Windows — and <strong>bash (or sh) inside almost every
+container</strong>.<a class="cite" href="https://www.gnu.org/software/bash/manual/">²</a></li>
+<li>The <strong>kernel</strong> is the one program that actually runs programs and
+touches hardware — disk, network, memory. Everything above it must ask.</li>
+</ul>
+
+<figure class="diagram">
+<svg viewBox="0 0 720 300" font-family="ui-monospace, Menlo, monospace" font-size="12">
+  <text x="180" y="28" text-anchor="middle" font-weight="700" fill="#22242a">on your computer (any OS)</text>
+  <rect x="40" y="42" width="280" height="56" rx="10" fill="#fff" stroke="#e5e0d2"/>
+  <text x="180" y="66" text-anchor="middle" font-weight="700" fill="#22242a">terminal emulator</text>
+  <text x="180" y="84" text-anchor="middle" fill="#6d7178">draws text · sends keystrokes</text>
+  <rect x="40" y="110" width="280" height="56" rx="10" fill="#eef4fc" stroke="#b9d2ee"/>
+  <text x="180" y="134" text-anchor="middle" font-weight="700" fill="#0a4d92">shell: zsh · bash · PowerShell</text>
+  <text x="180" y="152" text-anchor="middle" fill="#0a4d92">parses · finds programs · reports</text>
+  <rect x="40" y="178" width="280" height="56" rx="10" fill="#ecf7f1" stroke="#a9d8c2"/>
+  <text x="180" y="202" text-anchor="middle" font-weight="700" fill="#0a7d54">kernel: macOS · Windows · Linux</text>
+  <text x="180" y="220" text-anchor="middle" fill="#0a7d54">runs programs · owns disk &amp; network</text>
+
+  <text x="540" y="28" text-anchor="middle" font-weight="700" fill="#22242a">inside any container</text>
+  <rect x="400" y="42" width="280" height="56" rx="10" fill="#fff" stroke="#e5e0d2"/>
+  <text x="540" y="66" text-anchor="middle" font-weight="700" fill="#22242a">docker run -it · docker exec -it</text>
+  <text x="540" y="84" text-anchor="middle" fill="#6d7178">attaches the SAME terminal</text>
+  <rect x="400" y="110" width="280" height="56" rx="10" fill="#eef4fc" stroke="#b9d2ee"/>
+  <text x="540" y="134" text-anchor="middle" font-weight="700" fill="#0a4d92">shell: bash (or sh)</text>
+  <text x="540" y="152" text-anchor="middle" fill="#0a4d92">same shell for every learner</text>
+  <rect x="400" y="178" width="280" height="56" rx="10" fill="#ecf7f1" stroke="#a9d8c2"/>
+  <text x="540" y="202" text-anchor="middle" font-weight="700" fill="#0a7d54">kernel: Linux — always</text>
+  <text x="540" y="220" text-anchor="middle" fill="#0a7d54">shared by every container — lesson 1</text>
+
+  <text x="360" y="262" text-anchor="middle" fill="#0f62b7" font-weight="700">whatever your left side looks like, the right side is identical for everyone</text>
+  <text x="360" y="284" text-anchor="middle" fill="#6d7178">zsh and bash are POSIX cousins (skills transfer); PowerShell is its own language — so the labs live on the right</text>
+</svg>
+<figcaption><strong>The sandwich, twice.</strong> <code>docker exec -it web bash</code>
+means: attach <em>my terminal</em> to <em>a bash shell</em> whose kernel is
+<em>Linux</em>. Your host's shell and kernel vary by OS; the container side never does —
+which is exactly why this course practices inside containers.<a class="cite" href="https://docs.docker.com/reference/cli/docker/container/exec/">⁴</a></figcaption>
+</figure>
+
+<p><strong>Prompt anatomy.</strong> The shell signals who and where you are before every
+command. The convention survives across systems: zsh ends its prompt in <code>%</code>,
+bash in <code>$</code> for a normal user — and <code>#</code> when you are
+<strong>root</strong>, the all-powerful admin user. (PowerShell writes
+<code>PS C:\Users\you&gt;</code> — different costume, same job.) Inside containers
+you'll see <code>#</code> a lot; P2 explains why that matters.</p>
+
+<h2><span class="no">2</span>The 40 milliseconds after you press Enter</h2>
+
+<p>Type <code>ls -l /var/log</code> and hit Enter. Here's the round trip — step through
+it:<a class="cite" href="https://www.gnu.org/software/bash/manual/html_node/Command-Search-and-Execution.html">²</a></p>
+
+<figure class="diagram" data-anim>
+<svg viewBox="0 0 720 360" font-family="ui-monospace, Menlo, monospace" font-size="12">
+  <!-- three lanes -->
+  <rect x="20" y="40" width="180" height="250" rx="12" fill="#fff" stroke="#e5e0d2"/>
+  <text x="110" y="64" text-anchor="middle" font-weight="700" fill="#22242a">terminal</text>
+  <rect x="240" y="40" width="250" height="250" rx="12" fill="#eef4fc" stroke="#b9d2ee"/>
+  <text x="365" y="64" text-anchor="middle" font-weight="700" fill="#0a4d92">shell</text>
+  <rect x="530" y="40" width="170" height="250" rx="12" fill="#ecf7f1" stroke="#a9d8c2"/>
+  <text x="615" y="64" text-anchor="middle" font-weight="700" fill="#0a7d54">kernel</text>
+
+  <!-- step 1: raw line to shell -->
+  <g data-step="1">
+    <rect x="36" y="84" width="148" height="26" rx="6" fill="#f5f2e9" stroke="#e5e0d2"/>
+    <text x="110" y="101" text-anchor="middle" fill="#22242a">ls -l /var/log⏎</text>
+    <line class="flow" x1="188" y1="97" x2="236" y2="97" stroke="#0f62b7" stroke-width="1.6"/>
+    <text x="212" y="88" text-anchor="middle" fill="#0f62b7" font-weight="700">raw text</text>
+  </g>
+
+  <!-- step 2: tokenize -->
+  <g data-step="2">
+    <rect x="256" y="84" width="52" height="26" rx="6" fill="#fff" stroke="#0f62b7"/>
+    <text x="282" y="101" text-anchor="middle" fill="#0a4d92" font-weight="700">ls</text>
+    <rect x="316" y="84" width="52" height="26" rx="6" fill="#fff" stroke="#8d3a72"/>
+    <text x="342" y="101" text-anchor="middle" fill="#8d3a72" font-weight="700">-l</text>
+    <rect x="376" y="84" width="98" height="26" rx="6" fill="#fff" stroke="#8a6414"/>
+    <text x="425" y="101" text-anchor="middle" fill="#8a6414" font-weight="700">/var/log</text>
+    <text x="282" y="126" text-anchor="middle" fill="#6d7178" font-size="10.5">command</text>
+    <text x="342" y="126" text-anchor="middle" fill="#6d7178" font-size="10.5">flag</text>
+    <text x="425" y="126" text-anchor="middle" fill="#6d7178" font-size="10.5">argument</text>
+  </g>
+
+  <!-- step 3: PATH walk -->
+  <g data-step="3">
+    <text x="256" y="156" fill="#6d7178">find "ls" in PATH:</text>
+    <text x="256" y="176" fill="#9aa0a8">/usr/local/bin ✗</text>
+    <text x="256" y="194" fill="#9aa0a8">/bin ✗</text>
+    <g class="pulse">
+      <rect x="250" y="202" width="150" height="22" rx="6" fill="#ecf7f1" stroke="#a9d8c2"/>
+      <text x="325" y="217" text-anchor="middle" fill="#0a7d54" font-weight="700">/usr/bin/ls ✓</text>
+    </g>
+  </g>
+
+  <!-- step 4: ask kernel to run -->
+  <g data-step="4">
+    <line class="flow" x1="478" y1="213" x2="526" y2="213" stroke="#0f62b7" stroke-width="1.6"/>
+    <text x="502" y="204" text-anchor="middle" fill="#0f62b7" font-weight="700">run it</text>
+    <g class="pulse">
+      <rect x="546" y="196" width="138" height="30" rx="15" fill="#fff" stroke="#0a7d54"/>
+      <text x="615" y="216" text-anchor="middle" fill="#0a7d54" font-weight="700">▶ ls starts</text>
+    </g>
+  </g>
+
+  <!-- step 5: ls asks kernel for the directory -->
+  <g data-step="5">
+    <rect x="546" y="236" width="138" height="42" rx="8" fill="#fdf3dd" stroke="#e4c37a"/>
+    <text x="615" y="253" text-anchor="middle" fill="#8a6414">read /var/log</text>
+    <text x="615" y="269" text-anchor="middle" fill="#8a6414">→ entries</text>
+  </g>
+
+  <!-- step 6: output back, exit 0 -->
+  <g data-step="6">
+    <path class="flow" d="M 544 260 C 380 330, 200 320, 116 264" fill="none" stroke="#0a7d54" stroke-width="1.6"/>
+    <rect x="36" y="196" width="148" height="58" rx="6" fill="#f5f2e9" stroke="#e5e0d2"/>
+    <text x="44" y="214" fill="#22242a" font-size="10.5">drwxr-xr-x … apache2</text>
+    <text x="44" y="230" fill="#22242a" font-size="10.5">-rw-r----- … syslog</text>
+    <text x="44" y="246" fill="#22242a" font-size="10.5">… a fresh prompt ▊</text>
+    <rect x="392" y="252" width="82" height="24" rx="12" fill="#ecf7f1" stroke="#a9d8c2"/>
+    <text x="433" y="268" text-anchor="middle" fill="#0a7d54" font-weight="700">exit 0</text>
+  </g>
+
+  <text x="360" y="330" text-anchor="middle" fill="#6d7178" font-size="11">the shell never reads the disk; the kernel never parses your typing — each layer does one job</text>
+</svg>
+<ol class="anim-cap">
+<li>Enter pressed. The terminal understands none of it — it hands the raw text to the shell.</li>
+<li>The shell splits the line into words: a command, a flag, an argument. (Quoting rules — P3 — decide where words end.)</li>
+<li>The shell hunts for a program named "ls" through its PATH list of directories, left to right; first hit wins. P4 owns PATH.</li>
+<li>The shell can't execute anything itself — it asks the kernel to start /usr/bin/ls. (P5 gives this ask its real name: a syscall, execve.)</li>
+<li>Now ls does its one job: it asks the kernel for /var/log's entries. Only the kernel touches the disk.</li>
+<li>Output bytes flow back and the terminal draws them; ls exits with code 0 = success, and the shell prints a fresh prompt.</li>
+</ol>
+<figcaption><strong>One command, three specialists.</strong> Keep this picture: it is
+exactly what happens for every <code>RUN pip install …</code> in a Dockerfile and every
+command you'll ever type into <code>docker exec</code>.<a class="cite" href="https://www.gnu.org/software/bash/manual/html_node/Command-Search-and-Execution.html">²</a></figcaption>
+</figure>
+
+<h2><span class="no">3</span>Command anatomy, and how to ask for help</h2>
+
+<pre class="cmd" data-label="anatomy"><code>command -f --long-flag argument1 argument2
+<span class="comment"># ls        -l          /var/log   → short flags stack: ls -lah = -l -a -h</span></code></pre>
+
+<p>Help systems, by where you're standing:</p>
+
+<pre class="cmd" data-label="try these"><code>ls --help        <span class="comment"># quick flag list — works in every container</span>
+man ls           <span class="comment"># the full manual — on macOS &amp; Linux hosts (Windows: Get-Help dir)</span>
+type ls          <span class="comment"># what IS this command, really? (section 5 shows why this matters)</span></code></pre>
+
+<p>But try <code>man ls</code> <em>inside</em> a container and you get a surprise —
+images are stripped to stay small, so the manual pages simply aren't in there:</p>
+
+<pre class="cmd" data-label="inside ubuntu — man is a stub"><code>man ls</code></pre>
+<pre class="output" data-label="my run (2026-07-17)"><code>This system has been minimized by removing packages and content that are
+not required on a system that users do not log into.
+
+To restore this content, including manpages, you can run the 'unminimize'
+command. You will still need to ensure the 'man-db' package is installed.</code></pre>
+
+<p>Rule of thumb: <code>--help</code> inside containers; <code>man</code> on a
+macOS/Linux host; <code>Get-Help</code> if you're in PowerShell.<a class="cite" href="https://documentation.ubuntu.com/public-images/public-images-explanation/minimized-images/">⁵</a></p>
+
+<table>
+<tr><th>key</th><th>effect (bash &amp; zsh; most also work in PowerShell)</th></tr>
+<tr><td><code>Tab</code></td><td>complete the command/path — <strong>if it won't complete, it doesn't exist</strong> (your best typo detector)</td></tr>
+<tr><td><code>↑</code> / <code>↓</code></td><td>walk back through command history</td></tr>
+<tr><td><code>Ctrl-R</code></td><td>search history as you type</td></tr>
+<tr><td><code>Ctrl-C</code></td><td>interrupt the running command (P4 reveals what this really sends)</td></tr>
+<tr><td><code>Ctrl-L</code></td><td>clear the screen; history stays</td></tr>
+</table>
+
+<h2><span class="no">4</span>Lab A — move around, inside your Linux box</h2>
+
+<div class="callout">
+<p class="title">Your Linux playground — the one-liner of this whole phase</p>
+<pre class="cmd" data-label="terminal — identical on macOS, Windows, Linux"><code>docker run -it --name linuxbox ubuntu:24.04 bash</code></pre>
+<p>A full Ubuntu, disposable, in about a second — and the <strong>same</strong> Ubuntu no
+matter what your host OS is. (New here? Don't worry what the flags mean — Lesson 1
+explains them. For now: paste, and you're in Linux.)</p>
+</div>
+
+<p>Your prompt changes to something like <code>root@bd5ceeacf242:/#</code> — user
+<strong>root</strong> (that trailing <code>#</code>!), hostname = the container's ID.
+You are the admin of this tiny machine; P2 explores what that means. First, look at the
+land:</p>
+
+<pre class="cmd" data-label="inside linuxbox"><code>ls /</code></pre>
+<pre class="output" data-label="my run (2026-07-17)"><code>bin   dev  home  media  opt   root  sbin  sys  usr
+boot  etc  lib   mnt    proc  run   srv   tmp  var</code></pre>
+
+<p>That's the standard Linux tree — <code>/etc</code> for config, <code>/var</code> for
+logs and data, <code>/root</code> is root's home. P2 gives you the guided tour; it's
+also exactly what a Docker image <em>is</em>. Now learn to move. The filesystem is one
+tree growing from the root, <code>/</code>. An <strong>absolute path</strong> starts
+there (<code>/var/log</code>); a <strong>relative path</strong> starts from where you
+are. Three shorthands: <code>.</code> here · <code>..</code> up one · <code>~</code>
+your home.<a class="cite" href="https://linuxcommand.org/tlcl.php">¹</a></p>
+
+<pre class="cmd" data-label="inside linuxbox — orient yourself"><code>pwd              <span class="comment"># where am I? trust this, not the prompt</span>
+cd /var/log      <span class="comment"># absolute: same result from anywhere</span>
+pwd
+cd ~             <span class="comment"># home again (plain cd does the same)</span>
+pwd
+cd -             <span class="comment"># bounce back to wherever you just were</span></code></pre>
+
+<pre class="output" data-label="my run (2026-07-17)"><code>/
+/var/log
+/root</code></pre>
+
+<p>Now build something. You'll make a small notes project, reorganize it, and tear part
+of it down — the exact moves you'll later do inside images:</p>
+
+<pre class="cmd" data-label="inside linuxbox — build a tree"><code>cd ~
+mkdir -p harbor-notes/docs harbor-notes/drafts    <span class="comment"># -p makes parents too</span>
+cd harbor-notes
+touch docs/setup.md docs/commands.md drafts/idea.txt
+find .                                            <span class="comment"># show the whole tree</span></code></pre>
+
+<pre class="output" data-label="my run (2026-07-17)"><code>.
+./docs
+./docs/commands.md
+./docs/setup.md
+./drafts
+./drafts/idea.txt</code></pre>
+
+<pre class="cmd" data-label="inside linuxbox — copy, move, destroy"><code>cp -r docs docs-backup       <span class="comment"># -r = recursive, needed for directories</span>
+mv drafts/idea.txt docs/idea.md   <span class="comment"># mv moves AND renames — same command</span>
+rm -r docs-backup            <span class="comment"># gone. no trash. no undo. read twice, then Enter</span>
+ls -l docs</code></pre>
+
+<pre class="output" data-label="my run (2026-07-17)"><code>total 0
+-rw-r--r-- 1 root root 0 Jul 17 03:12 commands.md
+-rw-r--r-- 1 root root 0 Jul 17 03:12 idea.md
+-rw-r--r-- 1 root root 0 Jul 17 03:12 setup.md</code></pre>
+
+<p>Peek at details with <code>ls -lah</code> (long, all, human sizes) — for now read
+just names, sizes, dates. The cryptic <code>rw-r--r--</code> column on the left is the
+<em>entire subject</em> of P2. To page through any long file:
+<code>less filename</code> — space scrolls, <code>/word</code> searches,
+<code>q</code> quits. <strong>Stay in the box</strong> (or hop back in with the same
+<code>docker run</code> line after an <code>exit</code>) — Lab B uses it.</p>
+
+<h2><span class="no">5</span>Your own terminal — three dialects, one common ground</h2>
+
+<p>Everything in Lab A also works natively on macOS and Linux, because their shells and
+tools come from the same POSIX family. But "the same family" is not "identical" — and
+Windows speaks a different language entirely. Ask your own shell what <code>ls</code>
+really is:</p>
+
+<pre class="cmd" data-label="on YOUR machine"><code>type ls          <span class="comment"># bash/zsh (PowerShell: Get-Command ls)</span></code></pre>
+
+<pre class="output" data-label="my run (2026-07-17) — three machines, three answers"><code># macOS (the zsh this course was verified on — themed setup):
+ls is an alias for eza --icons --grid --group-directories-first
+
+# ubuntu:24.04 container (interactive bash):
+ls is aliased to `ls --color=auto'
+
+# Windows PowerShell (documented default):
+Alias   ls -&gt; Get-ChildItem</code></pre>
+
+<p><strong>On all three systems, <code>ls</code> isn't plain <code>ls</code>.</strong>
+macOS setups often alias it to a modern tool like
+<a href="https://github.com/eza-community/eza">eza</a>; Ubuntu quietly adds color flags;
+Windows PowerShell maps it to a completely different program,
+<code>Get-ChildItem</code>, whose flags share nothing with Unix
+<code>ls</code>.<a class="cite" href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_aliases">⁶</a>
+<code>type</code> (or <code>Get-Command</code>) is the truth-teller: it reveals aliases,
+builtins, and real binaries — ask it whenever a command behaves unlike the tutorial
+you're reading.</p>
+
+<p>Even the "real" <code>ls</code> differs by host: macOS ships the BSD flavor, Linux
+ships GNU. Same name, different dialects:</p>
+
+<pre class="cmd" data-label="macOS host — BSD userland"><code>/bin/ls --version</code></pre>
+<pre class="output" data-label="my run (2026-07-17) — BSD ls has no --version"><code>ls: unrecognized option `--version'
+usage: ls [-@ABCFGHILOPRSTUWXabcdefghiklmnopqrstuvwxy1%,] [--color=when] [-D format] [file ...]</code></pre>
+
+<p>Inside the ubuntu container the same command answers
+<code>ls (GNU coreutils) 9.4</code> (my run, 2026-07-17).<a class="cite" href="https://www.gnu.org/software/coreutils/manual/">³</a>
+This is the point of the whole section: <strong>your host is a dialect; the container is
+the standard.</strong> Whatever terminal you own — zsh on a Mac, bash on Fedora,
+PowerShell on Windows — the <code>linuxbox</code> gives every learner the identical GNU/Linux
+environment, and that's the dialect Dockerfiles and Kubernetes manifests speak.</p>
+
+<div class="callout">
+<p class="title">Windows users — two good options</p>
+<p><strong>Option 1 (used in this course):</strong> do everything inside the
+<code>linuxbox</code> container — your PowerShell only ever types
+<code>docker …</code> lines, which are identical on every OS. <strong>Option 2:</strong>
+install <a href="https://learn.microsoft.com/en-us/windows/wsl/install">WSL 2</a>
+(Windows Subsystem for Linux) and get a genuine Ubuntu terminal on Windows — Docker
+Desktop on Windows already runs on WSL 2 under the hood, so you have half of it
+installed.<a class="cite" href="https://docs.docker.com/desktop/features/wsl/">⁷</a>
+Don't hand-translate the labs into PowerShell syntax — the flags genuinely don't map.</p>
+</div>
+
+<h2><span class="no">6</span>Lab B — disposability, and your first graded exercise</h2>
+
+<pre class="cmd" data-label="inside linuxbox, then your host terminal"><code>exit                     <span class="comment"># leave the shell → the container stops</span>
+docker rm linuxbox       <span class="comment"># throw the whole machine away</span>
+docker run -it --name linuxbox ubuntu:24.04 bash
+ls /root                 <span class="comment"># … empty. your tree is gone</span></code></pre>
+
+<p>Fresh box, no <code>harbor-notes</code>. Containers <em>forget</em> — you met this in
+Lesson 1, and it's why anything worth keeping lives in an image (Lesson 3) or a volume
+(Lesson 5). Here it's a feature: you can never wreck this machine in a way
+<code>docker rm</code> won't fix.</p>
+
+<p>Finish with the feedback loop. The chapter ships <code>check.sh</code>, a grader for
+the tree you built. Exit the box, then — from the chapter folder — start one that can
+see it (<code>-v</code> shares the folder at <code>/labs</code>; lesson 5 explains):</p>
+
+<pre class="cmd" data-label="macOS / Linux / WSL — from docker-hands-on/p1-terminal-and-shell"><code>exit
+docker rm linuxbox
+docker run -it --rm -v "$PWD":/labs ubuntu:24.04 bash</code></pre>
+
+<pre class="cmd" data-label="Windows PowerShell — same thing, PowerShell's spelling of PWD"><code>docker run -it --rm -v "${PWD}:/labs" ubuntu:24.04 bash</code></pre>
+
+<pre class="cmd" data-label="inside the box — rebuild, then grade yourself"><code>cd /root
+mkdir -p harbor-notes/docs harbor-notes/drafts
+cd harbor-notes
+touch docs/setup.md docs/commands.md drafts/idea.txt
+cp -r docs docs-backup
+mv drafts/idea.txt docs/idea.md
+rm -r docs-backup
+sh /labs/check.sh /root/harbor-notes</code></pre>
+
+<pre class="output" data-label="my run (2026-07-17)"><code>PASS  harbor-notes/ exists
+PASS  docs/ exists
+PASS  drafts/ exists
+PASS  docs/setup.md exists
+PASS  docs/commands.md exists
+PASS  docs/idea.md exists (moved from drafts/ and renamed)
+PASS  drafts/idea.txt is gone (it moved)
+PASS  docs-backup/ is gone (rm -r cleaned it up)
+----
+8 passed, 0 failed
+All good — tree matches the lab. ✔</code></pre>
+
+<p>Any FAIL line tells you which move to redo — fix it and run the grader again. (On a
+macOS/Linux/WSL host you can also do the whole lab natively and grade it with
+<code>sh check.sh ~/harbor-notes</code> — the grader is the same either way.)</p>
+
+<div class="callout win">
+<p class="title">You can now</p>
+<ul>
+<li>Name the three layers under your cursor — terminal, shell, kernel — and say which
+one parses, which one runs, and which one draws.</li>
+<li>Navigate any Linux machine: <code>pwd</code>, <code>cd</code>, absolute vs relative
+paths, <code>.</code> <code>..</code> <code>~</code>.</li>
+<li>Build and reshape file trees with <code>mkdir -p</code>, <code>touch</code>,
+<code>cp -r</code>, <code>mv</code>, <code>rm -r</code> — in a container that's identical
+on every OS.</li>
+<li>Ask any command to explain itself (<code>--help</code>, <code>man</code>,
+<code>type</code> / <code>Get-Command</code>) and spot when "ls" isn't really ls — on
+macOS, Ubuntu, <em>and</em> Windows.</li>
+<li>Spin up and destroy a disposable Linux machine at will, from any host OS.</li>
+</ul>
+</div>
+
+<h2><span class="no">7</span>Check yourself</h2>
+
+<section class="quiz">
+  <div class="q" data-type="mcq" data-id="q1" data-answer="1">
+    <p class="prompt">You type <code>ls -l /var/log</code> and press Enter. Which
+    program splits the line into words and hunts for <code>ls</code>?</p>
+    <ol class="choices">
+      <li>the terminal emulator</li>
+      <li>the shell itself</li>
+      <li>the Linux kernel</li>
+      <li>the ls program</li>
+    </ol>
+  </div>
+  <div class="q" data-type="mcq" data-id="q2" data-answer="1">
+    <p class="prompt">Your current directory is <code>/var/log</code>. Where does
+    <code>cd ../tmp</code> land you?</p>
+    <ol class="choices">
+      <li>/tmp</li>
+      <li>/var/tmp</li>
+      <li>/var/log/tmp</li>
+      <li>/log/tmp</li>
+    </ol>
+  </div>
+  <div class="q" data-type="mcq" data-id="q3" data-answer="0">
+    <p class="prompt">Inside the ubuntu:24.04 container, <code>man ls</code> prints a
+    notice instead of the manual. Why?</p>
+    <ol class="choices">
+      <li>the image was minimized</li>
+      <li>the network is offline</li>
+      <li>man requires root privileges</li>
+      <li>bash lacks man support</li>
+    </ol>
+  </div>
+  <div class="q" data-type="recall" data-id="q4">
+    <p class="prompt">One line each: what do the terminal, the shell, and the kernel
+    contribute when you run a command?</p>
+    <p class="answer">Terminal: draws text and forwards keystrokes — understands no
+    commands. Shell: parses the line, finds the program via PATH, asks for it to run,
+    reports the exit code. Kernel: actually starts the program and performs all disk,
+    network, and memory work.</p>
+  </div>
+  <div class="q" data-type="recall" data-id="q5">
+    <p class="prompt">On three different machines, <code>ls</code> turned out to be an
+    alias for eza (a Mac), for <code>ls --color=auto</code> (Ubuntu), and for
+    <code>Get-ChildItem</code> (Windows PowerShell). What command exposes this, and why
+    does it matter the moment you step into a container?</p>
+    <p class="answer">type (in bash/zsh; Get-Command in PowerShell) reveals what a name
+    really resolves to — alias, builtin, or binary. It matters because your host's
+    aliases and dialect don't exist inside a container: there you get plain GNU tools,
+    so flags and output can differ from what your own terminal taught you to expect.
+    Ask type before you rely on a command behaving the way a tutorial shows.</p>
+  </div>
+</section>
+
+<h2><span class="no">8</span>Go deeper</h2>
+
+<p><strong>Primary source:</strong> <em>The Linux Command Line</em> by William Shotts —
+free book at <a href="https://linuxcommand.org/tlcl.php">linuxcommand.org</a>. Chapters
+1–4 cover this lesson's ground with more leisure: what shells are, navigation, and file
+manipulation. It's the book this whole phase leans on. (Windows readers: everything in
+it applies inside your <code>linuxbox</code> or WSL.)</p>
+
+<p><strong>Next:</strong> that <code>rw-r--r--</code> column you were told to ignore,
+the mysterious <code>root</code>, and the guided tour of <code>/etc</code> and friends —
+<a href="p2-files-permissions-and-root.html">P2: Files, Permissions &amp; root</a>.
+The Linux tree you just glimpsed with <code>ls /</code> is, byte for byte, what a Docker
+image contains.</p>
+
+<div class="callout">
+<p class="title">Stuck? Curious?</p>
+<p>Bring questions to class, or open an issue on the
+<a href="https://github.com/pdfarhad/docker-deep-dive/issues">course repo</a> — include
+the command you ran and the output you got. The quizzes above are for self-checking:
+commit to an answer before revealing it, and re-try anything you missed tomorrow.</p>
+</div>
+
+<div class="sources">
+<p><strong>Sources</strong></p>
+<ol>
+<li><a href="https://linuxcommand.org/tlcl.php">Shotts — The Linux Command Line</a>, ch. 1–4 (shell, navigation, file manipulation)</li>
+<li><a href="https://www.gnu.org/software/bash/manual/html_node/Command-Search-and-Execution.html">GNU Bash Reference Manual — Command Search and Execution</a> (word splitting, PATH lookup)</li>
+<li><a href="https://www.gnu.org/software/coreutils/manual/">GNU Coreutils manual</a> (ls, cp, mv, rm semantics; GNU vs BSD flags)</li>
+<li><a href="https://docs.docker.com/reference/cli/docker/container/exec/">Docker Docs — docker exec</a> (interactive shells in containers)</li>
+<li><a href="https://documentation.ubuntu.com/public-images/public-images-explanation/minimized-images/">Ubuntu — minimized images</a> (why man pages are stripped)</li>
+<li><a href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_aliases">Microsoft Learn — about_Aliases</a> (ls → Get-ChildItem in Windows PowerShell)</li>
+<li><a href="https://docs.docker.com/desktop/features/wsl/">Docker Docs — Docker Desktop WSL 2 backend</a> (Windows runs containers via WSL 2)</li>
+</ol>
+</div>
+
+<div class="next">
+<span>↩ <a href="../index.html">course index</a></span>
+<span><a href="p2-files-permissions-and-root.html">P2: Files, Permissions &amp; root →</a></span>
+</div>
+
+</main>
+<footer class="colophon">Docker Deep Dive · Prerequisite P1 · authored 2026-07-17,
+made OS-agnostic the same day · container labs verified on the instructor's machine (Engine
+20.10.12, ubuntu:24.04, kernel 5.10.76-linuxkit); Windows-specific facts cited, not
+machine-verified</footer>
+<script src="../assets/course-map.js"></script>
+<script src="../assets/nav.js"></script>
+<script src="../assets/snippet.js"></script>
+<script src="../assets/anim.js"></script>
+<script type="module" src="../assets/quiz.js"></script>
+</body>
+</html>

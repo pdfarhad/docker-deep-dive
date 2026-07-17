@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prerequisite P2 · Files, Permissions &amp; root — Docker Deep Dive</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="../assets/quiz.css">
+</head>
+<body data-lesson="p2-files-permissions-and-root">
+<main>
+
+<p class="kicker">Docker Deep Dive · Prerequisites · P2 of 7</p>
+<h1>Files, Permissions &amp; root</h1>
+<p class="lede">Every <code>Permission denied</code> you will ever meet — in a container,
+on a server, in a Dockerfile — comes from one kernel rule. Learn to read it, predict it,
+and fix it in one command.</p>
+<p class="meta">⏱ ~25 min hands-on · repo chapter
+<a href="https://github.com/pdfarhad/docker-hands-on/tree/main/p2-files-permissions-and-root">p2-files-permissions-and-root</a>
+· cheatsheet: <a href="../reference/linux-shell-cheatsheet.html">Linux &amp; Shell</a></p>
+
+<div class="progress" aria-label="prerequisite progress">
+<span class="done" title="P1 · terminal & shell"></span><span class="here" title="P2 · files & permissions"></span><span title="P3 · pipes & text"></span><span title="P4 · processes & signals"></span><span title="P5 · kernel & namespaces"></span><span title="P6 · ports & packages"></span><span title="P7 · scripts & entrypoints"></span>
+<em>prereq P2 / 7</em>
+</div>
+
+<div class="callout">
+<p class="title">Before you start</p>
+<pre class="cmd" data-label="macOS / Linux / WSL"><code>cd docker-hands-on
+git pull
+cd p2-files-permissions-and-root
+docker run -it --name permbox -v "$(pwd)":/labs ubuntu:24.04 bash</code></pre>
+<pre class="cmd" data-label="Windows PowerShell — same last line, PowerShell's spelling"><code>docker run -it --name permbox -v "${PWD}:/labs" ubuntu:24.04 bash</code></pre>
+<p>That last line is your disposable Linux box for this lesson. The <code>-v</code> part
+mounts this chapter folder at <code>/labs</code> inside, so the self-grader travels with
+you — it's the bind mount from Lesson 5; if you're doing prerequisites first, paste now,
+understand later. Nothing you break in there can touch your computer.</p>
+</div>
+
+<h2><span class="no">1</span>Everything is a file, and every file has an address</h2>
+
+<p>Linux organizes <em>everything</em> into one tree rooted at <code>/</code> — programs,
+configuration, logs, even your hardware. There's no C: drive, no Registry, no
+"Application Support": when you know which branch holds what, you can find your way
+around <em>any</em> Linux system, including the inside of every container you'll ever
+exec into. The layout is a standard (the Filesystem Hierarchy Standard<a class="cite" href="https://refspecs.linuxfoundation.org/FHS_3.0/fhs/index.html">¹</a>),
+which is why it looks the same in Ubuntu, Alpine, and the postgres image.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 720 330" font-family="ui-monospace, Menlo, monospace" font-size="12">
+  <text x="40" y="30" font-weight="700" font-size="15" fill="#22242a">/</text>
+  <line x1="46" y1="38" x2="46" y2="304" stroke="#e5e0d2" stroke-width="1.5"/>
+  <!-- rows: box + annotation -->
+  <line x1="46" y1="58" x2="66" y2="58" stroke="#e5e0d2" stroke-width="1.5"/>
+  <rect x="70" y="44" width="150" height="26" rx="6" fill="#eef4fc" stroke="#b9d2ee"/>
+  <text x="80" y="61" fill="#0a4d92">/bin · /usr/bin</text>
+  <text x="236" y="61" fill="#6d7178">the programs — where PATH looks (P1)</text>
+
+  <line x1="46" y1="96" x2="66" y2="96" stroke="#e5e0d2" stroke-width="1.5"/>
+  <rect x="70" y="82" width="150" height="26" rx="6" fill="#eef4fc" stroke="#b9d2ee"/>
+  <text x="80" y="99" fill="#0a4d92">/etc</text>
+  <text x="236" y="99" fill="#6d7178">configuration — plain text files; L3's COPY lands app config here</text>
+
+  <line x1="46" y1="134" x2="66" y2="134" stroke="#e5e0d2" stroke-width="1.5"/>
+  <rect x="70" y="120" width="150" height="26" rx="6" fill="#eef4fc" stroke="#b9d2ee"/>
+  <text x="80" y="137" fill="#0a4d92">/var</text>
+  <text x="236" y="137" fill="#6d7178">data that grows — logs, databases; L6 mounts a volume at /var/lib/postgresql</text>
+
+  <line x1="46" y1="172" x2="66" y2="172" stroke="#e5e0d2" stroke-width="1.5"/>
+  <rect x="70" y="158" width="150" height="26" rx="6" fill="#eef4fc" stroke="#b9d2ee"/>
+  <text x="80" y="175" fill="#0a4d92">/tmp</text>
+  <text x="236" y="175" fill="#6d7178">scratch space, world-writable, wiped on reboot</text>
+
+  <line x1="46" y1="210" x2="66" y2="210" stroke="#e5e0d2" stroke-width="1.5"/>
+  <rect x="70" y="196" width="150" height="26" rx="6" fill="#ecf7f1" stroke="#a9d8c2"/>
+  <text x="80" y="213" fill="#0a7d54">/home · /root</text>
+  <text x="236" y="213" fill="#6d7178">people's files — root's home lives apart, locked drwx------</text>
+
+  <line x1="46" y1="248" x2="66" y2="248" stroke="#e5e0d2" stroke-width="1.5"/>
+  <rect x="70" y="234" width="150" height="26" rx="6" fill="#fdf3dd" stroke="#e4c37a"/>
+  <text x="80" y="251" fill="#8a6414">/dev</text>
+  <text x="236" y="251" fill="#6d7178">devices as files — /dev/null is a file you can write to forever</text>
+
+  <line x1="46" y1="286" x2="66" y2="286" stroke="#e5e0d2" stroke-width="1.5"/>
+  <rect x="70" y="272" width="150" height="26" rx="6" fill="#fdf3dd" stroke="#e4c37a"/>
+  <text x="80" y="289" fill="#8a6414">/proc · /sys</text>
+  <text x="236" y="289" fill="#6d7178">the kernel's live window — P5 opens it; L10's cgroup files live in /sys</text>
+
+  <text x="40" y="322" fill="#9aa0a8" font-size="11">one tree, standardized (FHS) — the same map inside every image this course uses</text>
+</svg>
+<figcaption><strong>The branches you'll actually visit.</strong> Config in
+<code>/etc</code>, growing data in <code>/var</code>, programs in <code>/usr/bin</code>,
+people in <code>/home</code> — and two "fake" branches (<code>/dev</code>,
+<code>/proc</code>) where the kernel pretends to be files.<a class="cite" href="https://refspecs.linuxfoundation.org/FHS_3.0/fhs/index.html">¹</a></figcaption>
+</figure>
+
+<p>Take the tour inside your permbox:</p>
+
+<pre class="cmd" data-label="inside permbox"><code>ls /
+head -3 /etc/os-release
+ls /var/log
+ls -l /dev/null
+ls -ld /root /tmp</code></pre>
+
+<pre class="output" data-label="my run (2026-07-17)"><code>bin boot dev etc home lib media mnt opt proc root run sbin srv sys tmp usr var
+
+PRETTY_NAME="Ubuntu 24.04.4 LTS"
+NAME="Ubuntu"
+VERSION_ID="24.04"
+
+alternatives.log  apt  bootstrap.log  btmp  dpkg.log  faillog  lastlog  wtmp
+
+crw-rw-rw- 1 root root 1, 3 Jul 17 03:14 /dev/null
+
+drwx------ 2 root root 4096 Jun 10 02:16 /root
+drwxrwxrwt 2 root root 4096 Jun 10 02:16 /tmp</code></pre>
+
+<p>Notice <code>/dev/null</code> starts with <code>c</code> — a <em>character device</em>
+pretending to be a file. "Everything is a file" isn't a slogan; it's the design. And
+here's the tie to everything you've built so far: <strong>a Docker image is exactly one
+of these trees</strong>, zipped into layers (Lesson 2). Prove it from your host terminal
+(second tab or window):</p>
+
+<pre class="cmd" data-label="terminal (on your host)"><code>docker run --rm alpine ls /
+docker run --rm ubuntu:24.04 ls /</code></pre>
+
+<pre class="output" data-label="my run (2026-07-17)"><code>alpine:  bin dev etc home lib media mnt opt proc root run sbin srv sys tmp usr var
+ubuntu:  bin boot dev etc home lib media mnt opt proc root run sbin srv sys tmp usr var</code></pre>
+
+<p>Two different distros, one standard map. When Lesson 3's <code>COPY app.py /app/</code>
+runs, it's writing into this tree; when you <code>docker exec</code> into Harbor Log,
+this is the terrain.</p>
+
+<h2><span class="no">2</span>Identity: you are a number</h2>
+
+<p>Permissions are meaningless without identity. Every process runs <em>as</em> a user —
+really a <strong>uid</strong> (number) plus a primary group (<strong>gid</strong>) and
+supplementary groups.<a class="cite" href="https://man7.org/linux/man-pages/man7/credentials.7.html">²</a>
+Ask who you are:</p>
+
+<pre class="cmd" data-label="inside permbox"><code>id</code></pre>
+
+<pre class="output" data-label="my run (2026-07-17)"><code>uid=0(root) gid=0(root) groups=0(root)</code></pre>
+
+<div class="callout warn">
+<p class="title">uid 0 — you're root, and every container starts this way</p>
+<p>Root is not "an admin account"; it's uid 0, the identity the kernel exempts from
+permission checks. Unless an image says otherwise, <strong>containers run as root by
+default</strong> — you've been root in every lab since Lesson 1. Why that's a problem,
+and the <code>USER</code> instruction that fixes it, is Lesson 11's opening
+move.<a class="cite" href="https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html">⁵</a></p>
+</div>
+
+<p>Where do users live? In a plain text file — the everything-is-a-file payoff:</p>
+
+<pre class="cmd" data-label="inside permbox"><code>head -4 /etc/passwd
+useradd -m -s /bin/bash dev
+grep dev /etc/passwd</code></pre>
+
+<pre class="output" data-label="my run (2026-07-17)"><code>root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+
+dev:x:1001:1001::/home/dev:/bin/bash</code></pre>
+
+<p><code>useradd</code> didn't do anything mystical — it appended a line:
+<em>name : x : uid : gid : comment : home : shell</em>. (Ubuntu 24.04 images ship a
+ready-made <code>ubuntu</code> user at uid 1000, so <code>dev</code> lands at 1001.)
+Now feel the difference identity makes:</p>
+
+<pre class="cmd" data-label="inside permbox"><code>su - dev
+id
+touch /etc/evil
+exit</code></pre>
+
+<pre class="output" data-label="my run (2026-07-17)"><code>uid=1001(dev) gid=1001(dev) groups=1001(dev)
+touch: cannot touch '/etc/evil': Permission denied</code></pre>
+
+<p>Same machine, same command, different uid — different answer. That's the whole game.</p>
+
+<h2><span class="no">3</span>Read the mode string</h2>
+
+<p>Every <code>ls -l</code> row leads with ten characters that answer "who may do what".
+Learn to read them once and you'll read them forever:<a class="cite" href="https://linuxcommand.org/tlcl.php">³</a></p>
+
+<figure class="diagram">
+<svg viewBox="0 0 720 240" font-family="ui-monospace, Menlo, monospace" font-size="12">
+  <!-- the ten characters -->
+  <g font-size="30" font-weight="700">
+    <text x="60"  y="70" fill="#6d7178">-</text>
+    <text x="120" y="70" fill="#0a7d54">r</text>
+    <text x="152" y="70" fill="#0a7d54">w</text>
+    <text x="184" y="70" fill="#0a7d54">x</text>
+    <text x="260" y="70" fill="#0a4d92">r</text>
+    <text x="292" y="70" fill="#0a4d92">-</text>
+    <text x="324" y="70" fill="#0a4d92">x</text>
+    <text x="400" y="70" fill="#8a6414">r</text>
+    <text x="432" y="70" fill="#8a6414">-</text>
+    <text x="464" y="70" fill="#8a6414">-</text>
+    <text x="540" y="70" fill="#22242a" font-size="16">app staff</text>
+  </g>
+  <!-- braces -->
+  <path d="M 56 84 h 22" stroke="#6d7178" stroke-width="2" fill="none"/>
+  <path d="M 116 84 h 84" stroke="#0a7d54" stroke-width="2" fill="none"/>
+  <path d="M 256 84 h 84" stroke="#0a4d92" stroke-width="2" fill="none"/>
+  <path d="M 396 84 h 84" stroke="#8a6414" stroke-width="2" fill="none"/>
+  <path d="M 536 84 h 84" stroke="#22242a" stroke-width="2" fill="none"/>
+  <!-- labels -->
+  <text x="67"  y="106" text-anchor="middle" fill="#6d7178">type</text>
+  <text x="67"  y="122" text-anchor="middle" fill="#9aa0a8" font-size="10.5">- file · d dir · l link · c device</text>
+  <text x="158" y="106" text-anchor="middle" fill="#0a7d54" font-weight="700">owner</text>
+  <text x="158" y="122" text-anchor="middle" fill="#0a7d54">read write execute</text>
+  <text x="298" y="106" text-anchor="middle" fill="#0a4d92" font-weight="700">group</text>
+  <text x="298" y="122" text-anchor="middle" fill="#0a4d92">read — execute</text>
+  <text x="438" y="106" text-anchor="middle" fill="#8a6414" font-weight="700">others</text>
+  <text x="438" y="122" text-anchor="middle" fill="#8a6414">read only</text>
+  <text x="576" y="106" text-anchor="middle" fill="#22242a" font-weight="700">owner · group</text>
+  <text x="576" y="122" text-anchor="middle" fill="#9aa0a8" font-size="10.5">the two names ls -l shows next</text>
+  <!-- octal strip -->
+  <rect x="100" y="150" width="420" height="66" rx="10" fill="#f5f2e9" stroke="#e5e0d2"/>
+  <text x="120" y="172" fill="#22242a" font-weight="700">as octal: r=4 w=2 x=1, add each triad</text>
+  <text x="120" y="196" fill="#0a7d54">rwx = 4+2+1 = 7</text>
+  <text x="280" y="196" fill="#0a4d92">r-x = 4+0+1 = 5</text>
+  <text x="430" y="196" fill="#8a6414">r-- = 4</text>
+  <text x="540" y="184" fill="#22242a" font-weight="700" font-size="15">→ 754</text>
+</svg>
+<figcaption><strong>The ten-character decoder.</strong> One type character, then three
+<em>triads</em> — owner, group, others — each answering read? write? execute? The octal
+shorthand just adds 4/2/1 per triad: <code>rwxr-xr--</code> = <code>754</code>.<a class="cite" href="https://linuxcommand.org/tlcl.php">³</a></figcaption>
+</figure>
+
+<p>One subtlety carries half the debugging value: <strong>the letters mean different
+things on directories</strong>:</p>
+
+<table>
+<tr><th>bit</th><th>on a file</th><th>on a directory</th></tr>
+<tr><td><code>r</code></td><td>read the contents</td><td>list the names inside</td></tr>
+<tr><td><code>w</code></td><td>change the contents</td><td>create/delete entries — <em>even files you don't own</em></td></tr>
+<tr><td><code>x</code></td><td>run it as a program</td><td>enter it (<code>cd</code>) / traverse through it</td></tr>
+</table>
+
+<p>Look back at the tour output: <code>/root</code> is <code>drwx------</code> (root's
+home, nobody else may even enter) and <code>/tmp</code> is <code>drwxrwxrwt</code> —
+world-writable, with a trailing <code>t</code> (the <em>sticky bit</em>: everyone may
+create files, but you may delete only your own).</p>
+
+<h2><span class="no">4</span>How the kernel decides — watch a denial happen</h2>
+
+<p>When a process touches a file, the kernel runs one short algorithm — and a detail
+surprises almost everyone: it picks <strong>exactly one triad</strong> (the first that
+matches your identity) and never looks at the others.<a class="cite" href="https://man7.org/linux/man-pages/man7/path_resolution.7.html">⁴</a>
+Step through a real denial:</p>
+
+<figure class="diagram" data-anim>
+<svg viewBox="0 0 720 350" font-family="ui-monospace, Menlo, monospace" font-size="12">
+  <defs>
+    <marker id="parr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6d7178"/>
+    </marker>
+  </defs>
+  <!-- process card -->
+  <rect x="20" y="40" width="200" height="64" rx="10" fill="#ecf7f1" stroke="#a9d8c2"/>
+  <text x="120" y="64" text-anchor="middle" font-weight="700" fill="#0a7d54">process: cat data.db</text>
+  <text x="120" y="86" text-anchor="middle" fill="#0a7d54">uid=1001(dev) · groups: dev</text>
+  <!-- file card -->
+  <rect x="500" y="40" width="200" height="64" rx="10" fill="#fff" stroke="#e5e0d2"/>
+  <text x="600" y="64" text-anchor="middle" font-weight="700" fill="#22242a">/app/data.db</text>
+  <text x="600" y="86" text-anchor="middle" fill="#6d7178">app(1000):app · rw-r-----</text>
+  <!-- kernel band -->
+  <rect x="20" y="126" width="680" height="34" rx="8" fill="#eef4fc" stroke="#b9d2ee"/>
+  <text x="360" y="148" text-anchor="middle" font-weight="700" fill="#0a4d92">the kernel — permission check on every open()</text>
+  <!-- step 1: syscall arrow -->
+  <g data-step="1">
+    <line x1="120" y1="108" x2="120" y2="122" stroke="#6d7178" stroke-width="1.6" class="flow" marker-end="url(#parr)"/>
+    <text x="132" y="120" fill="#0f62b7" font-weight="700">open("/app/data.db") — a syscall (P5)</text>
+  </g>
+  <!-- step 2: owner check -->
+  <g data-step="2">
+    <rect x="40" y="184" width="190" height="56" rx="10" fill="#fff" stroke="#0f62b7" class="pulse"/>
+    <text x="135" y="206" text-anchor="middle" font-weight="700" fill="#0a4d92">uid == owner?</text>
+    <text x="135" y="226" text-anchor="middle" fill="#b3261e">1001 ≠ 1000 → no</text>
+  </g>
+  <!-- step 3: group check -->
+  <g data-step="3">
+    <line x1="230" y1="212" x2="258" y2="212" stroke="#6d7178" stroke-width="1.5" marker-end="url(#parr)"/>
+    <rect x="262" y="184" width="190" height="56" rx="10" fill="#fff" stroke="#0f62b7" class="pulse"/>
+    <text x="357" y="206" text-anchor="middle" font-weight="700" fill="#0a4d92">in group "app"?</text>
+    <text x="357" y="226" text-anchor="middle" fill="#b3261e">groups: dev → no</text>
+  </g>
+  <!-- step 4: other triad, denial -->
+  <g data-step="4">
+    <line x1="452" y1="212" x2="480" y2="212" stroke="#6d7178" stroke-width="1.5" marker-end="url(#parr)"/>
+    <rect x="484" y="184" width="196" height="56" rx="10" fill="#fff" stroke="#b3261e" class="pulse"/>
+    <text x="582" y="206" text-anchor="middle" font-weight="700" fill="#b3261e">others triad: ---</text>
+    <text x="582" y="226" text-anchor="middle" fill="#b3261e" font-weight="700">EACCES · Permission denied</text>
+  </g>
+  <!-- step 5: root bypass -->
+  <g data-step="5">
+    <rect x="40" y="262" width="440" height="34" rx="17" fill="#fdf3dd" stroke="#e4c37a"/>
+    <text x="260" y="284" text-anchor="middle" fill="#8a6414" font-weight="700">same call as uid 0 → checks skipped (CAP_DAC_OVERRIDE) → opens</text>
+  </g>
+  <!-- step 6: fixes -->
+  <g data-step="6">
+    <rect x="40" y="308" width="640" height="34" rx="8" fill="#ecf7f1" stroke="#a9d8c2"/>
+    <text x="360" y="330" text-anchor="middle" fill="#0a7d54" font-weight="700">fix: chown dev /app/data.db — or chmod g+r + usermod -aG app dev</text>
+  </g>
+</svg>
+<ol class="anim-cap">
+<li>cat asks the kernel to open the file — every file touch is a syscall (P5 opens that door).</li>
+<li>First question: does the process uid match the file's owner? 1001 ≠ 1000 — move on.</li>
+<li>Second: is the file's group among the process's groups? dev isn't in "app" — move on.</li>
+<li>Fall through to the others triad: --- grants nothing. EACCES — the "Permission denied" you saw as dev.</li>
+<li>Root (uid 0) skips the checks entirely — that's why everything "just works" in your containers… so far.</li>
+<li>Two honest fixes: make dev the owner, or grant the group bit and put dev in the group. Pick one; don't chmod 777.</li>
+</ol>
+<figcaption><strong>First match wins — then it stops.</strong> The kernel uses the
+owner triad if your uid matches, <em>else</em> the group triad, <em>else</em> others.
+It never falls back, even when a later triad would grant more.<a class="cite" href="https://man7.org/linux/man-pages/man7/path_resolution.7.html">⁴</a></figcaption>
+</figure>
+
+<p>"Never falls back" sounds like trivia until you see it. Prove it — a file whose
+<em>owner</em> may do nothing but whose <em>group</em> may read, owned by dev in both:</p>
+
+<pre class="cmd" data-label="inside permbox (as root)"><code>touch /lab/proof.txt
+chown dev:dev /lab/proof.txt
+chmod 040 /lab/proof.txt          <span class="comment"># owner: --- , group: r-- , others: ---</span>
+su - dev -c "cat /lab/proof.txt"</code></pre>
+
+<pre class="output" data-label="my run (2026-07-17)"><code>cat: /lab/proof.txt: Permission denied</code></pre>
+
+<p>dev is in group dev, and group may read — but dev <em>owns</em> the file, so only the
+owner triad (<code>---</code>) is consulted. First match wins.</p>
+
+<h2><span class="no">5</span>Lab — the fix-it loop</h2>
+
+<p>Build a small tree in <code>/lab</code> and drill the two commands you'll type for
+the rest of your career: <code>chmod</code> (change the mode) and <code>chown</code>
+(change the owner). Still inside permbox, as root:</p>
+
+<pre class="cmd" data-label="inside permbox"><code>mkdir /lab &amp;&amp; cd /lab
+echo 'echo "hello from $(whoami)"' &gt; hello.sh   <span class="comment"># writes the file — P3 explains &gt;</span>
+./hello.sh</code></pre>
+
+<pre class="output" data-label="my run (2026-07-17)"><code>bash: ./hello.sh: Permission denied</code></pre>
+
+<p><em>Even root</em> can't execute a file with no <code>x</code> bit anywhere — the one
+check uid 0 doesn't skip. (<code>echo $?</code> prints <code>126</code>: "found but not
+executable" — P4 decodes exit codes.) Fix and confirm:</p>
+
+<pre class="cmd" data-label="inside permbox"><code>ls -l hello.sh
+chmod u+x hello.sh                <span class="comment"># symbolic: u=owner, +x=add execute</span>
+ls -l hello.sh
+./hello.sh</code></pre>
+
+<pre class="output" data-label="my run (2026-07-17)"><code>-rw-r--r-- 1 root root 28 Jul 17 03:14 hello.sh
+-rwxr--r-- 1 root root 28 Jul 17 03:14 hello.sh
+hello from root</code></pre>
+
+<p>Now the octal drills — the three numbers you'll type on autopilot someday:</p>
+
+<pre class="cmd" data-label="inside permbox"><code>touch app.conf secret.env handoff.txt
+mkdir public vault
+chmod 644 app.conf                <span class="comment"># rw-r--r-- world-readable config</span>
+chmod 600 secret.env              <span class="comment"># rw------- owner-only secret</span>
+chmod 755 public                  <span class="comment"># rwxr-xr-x enterable directory</span>
+chmod 600 vault                   <span class="comment"># rw------- directory with NO x — a wall</span>
+chown dev:dev handoff.txt         <span class="comment"># give it away (root only)</span>
+ls -l</code></pre>
+
+<pre class="output" data-label="my run (2026-07-17)"><code>-rw-r--r-- 1 root root    0 Jul 17 03:14 app.conf
+-rw-r--r-- 1 dev  dev     0 Jul 17 03:14 handoff.txt
+-rwxr--r-- 1 root root   28 Jul 17 03:14 hello.sh
+drwxr-xr-x 2 root root 4096 Jul 17 03:14 public
+-rw------- 1 root root    0 Jul 17 03:14 secret.env
+drw------- 2 root root 4096 Jul 17 03:14 vault</code></pre>
+
+<p>Feel the walls from dev's side — three denials, each now predictable from the
+algorithm in section 4:</p>
+
+<pre class="cmd" data-label="inside permbox"><code>su - dev -c "cd /lab/vault"       <span class="comment"># no x on the dir → can't enter</span>
+su - dev -c "cat /etc/shadow"     <span class="comment"># the password store: rw-r----- root:shadow</span>
+mkdir /shared &amp;&amp; chmod 777 /shared &amp;&amp; touch /shared/root-owned.txt
+su - dev -c "rm /shared/root-owned.txt" &amp;&amp; echo "dev deleted root's file"</code></pre>
+
+<pre class="output" data-label="my run (2026-07-17)"><code>-bash: line 1: cd: /lab/vault: Permission denied
+cat: /etc/shadow: Permission denied
+dev deleted root's file</code></pre>
+
+<p>Read that last one again: dev deleted <em>root's</em> file. Deleting is a
+<em>directory</em> write (removing a name from the folder), so <code>w</code> on a 777
+directory beats file ownership. That's why <code>/tmp</code> needs its sticky bit — and
+why <code>chmod 777</code> is never the fix.</p>
+
+<p>Now grade yourself — the chapter ships a self-checker:</p>
+
+<pre class="cmd" data-label="inside permbox"><code>bash /labs/check.sh</code></pre>
+
+<pre class="output" data-label="my run (2026-07-17)"><code>PASS  user dev exists
+PASS  hello.sh is executable
+PASS  hello.sh runs and greets
+PASS  app.conf is 644 (rw-r--r--)
+PASS  secret.env is 600 (rw-------)
+PASS  public/ is a 755 directory
+PASS  vault/ is a 600 directory (unenterable)
+PASS  handoff.txt owned by dev:dev
+
+8 passed, 0 failed</code></pre>
+
+<p>Any FAIL line tells you the exact fix. Re-run until green, then <code>exit</code> and
+<code>docker rm -f permbox</code> on your host.</p>
+
+<h2><span class="no">6</span>Why Docker cares about every bit of this</h2>
+
+<ul>
+<li><strong>Images ship identities.</strong> Well-built images create a user and switch
+to it. The postgres image you ran in Lesson 6 did exactly that:
+<pre class="cmd" data-label="terminal (on your host)"><code>docker run --rm postgres:16-alpine id postgres</code></pre>
+<pre class="output" data-label="my run (2026-07-17)"><code>uid=70(postgres) gid=70(postgres) groups=70(postgres),70(postgres)</code></pre></li>
+<li><strong><code>USER</code> and <code>COPY --chown</code></strong> (Lessons 8 &amp; 11)
+are just <code>useradd</code>/<code>chown</code> baked into image layers — you now know
+precisely what they write and why.<a class="cite" href="https://docs.docker.com/reference/dockerfile/">⁶</a></li>
+<li><strong>The classic production bug:</strong> app runs as uid 1001 (good, non-root),
+writes to a volume owned by uid 0 → <code>Permission denied</code> → crash-loop. You can
+now both <em>read</em> that failure and fix it (<code>chown</code> the mount point in the
+Dockerfile, or match uids).</li>
+</ul>
+
+<div class="callout warn">
+<p class="title">Honesty note for macOS &amp; Windows users</p>
+<p>Docker Desktop quietly translates file ownership on <em>bind mounts</em> between
+your host OS and the Linux VM, so some permission failures you'd hit on a real Linux
+server never appear on your laptop. The rules you practiced are exactly what runs in
+production — Desktop is just being polite. Named volumes and container-local paths
+(like <code>/lab</code> today) behave like real Linux, on every host.</p>
+</div>
+
+<div class="callout win">
+<p class="title">You can now</p>
+<ul>
+<li>Navigate any Linux tree by its standard map — /etc, /var, /usr/bin, /proc.</li>
+<li>Decode <code>-rwxr-x---</code> on sight, in symbols or octal, for files <em>and</em> directories.</li>
+<li>Predict which triad the kernel will use — and why first-match-wins never falls back.</li>
+<li>Fix a <code>Permission denied</code> honestly with <code>chmod</code>/<code>chown</code> instead of 777.</li>
+<li>Explain why containers run as root and where <code>USER</code> enters the story.</li>
+</ul>
+</div>
+
+<h2><span class="no">7</span>Check yourself</h2>
+
+<section class="quiz">
+  <div class="q" data-type="mcq" data-id="q1" data-answer="1">
+    <p class="prompt">You run <code>chmod 640 app.conf</code> (owner alice, group web).
+    What does that grant?</p>
+    <ol class="choices">
+      <li>alice and web may both write</li>
+      <li>alice writes; web may only read</li>
+      <li>everyone reads; only alice may write</li>
+      <li>alice executes; web may only read</li>
+    </ol>
+  </div>
+  <div class="q" data-type="mcq" data-id="q2" data-answer="2">
+    <p class="prompt">A file is mode <code>040</code>, owned by <code>dev:dev</code> —
+    and user dev is in group dev. dev runs <code>cat</code> on it. Result?</p>
+    <ol class="choices">
+      <li>read succeeds via the group triad</li>
+      <li>read succeeds; owners always may read</li>
+      <li>read denied; the owner triad rules</li>
+      <li>read denied; cat requires execute bit</li>
+    </ol>
+  </div>
+  <div class="q" data-type="mcq" data-id="q3" data-answer="2">
+    <p class="prompt">To <code>cd</code> into a directory, which permission must you
+    hold on it?</p>
+    <ol class="choices">
+      <li>the read bit r</li>
+      <li>the write bit w</li>
+      <li>the execute bit x</li>
+      <li>both read and write</li>
+    </ol>
+  </div>
+  <div class="q" data-type="recall" data-id="q4">
+    <p class="prompt">Decode <code>-rwxr-x---</code>: type, each triad, and who is
+    completely locked out.</p>
+    <p class="answer">A regular file (-). Owner: read+write+execute. Group: read+execute
+    (no modifying). Others: nothing at all — anyone who is neither the owner nor in the
+    group can't even read it. Octal: 750.</p>
+  </div>
+  <div class="q" data-type="recall" data-id="q5">
+    <p class="prompt">Why does "containers run as root by default" matter, and what's
+    the Dockerfile-level fix?</p>
+    <p class="answer">The container's main process runs as uid 0, which skips permission
+    checks — so a compromised app owns the whole container filesystem (and has more
+    leverage against the host). Fix: create a user in the image and switch with the
+    USER instruction (plus COPY --chown for the files it needs) — lessons 8 and 11.</p>
+  </div>
+</section>
+
+<h2><span class="no">8</span>Go deeper</h2>
+
+<p><strong>Primary source:</strong> <em>The Linux Command Line</em> (free PDF), chapter 9
+"Permissions" — the clearest 20 pages ever written on this topic:
+<a href="https://linuxcommand.org/tlcl.php">linuxcommand.org/tlcl.php</a>. For the
+kernel's-eye view, skim
+<a href="https://man7.org/linux/man-pages/man7/path_resolution.7.html">path_resolution(7)</a>.</p>
+
+<p><strong>Next:</strong> you've been quietly using <code>&gt;</code> and pipes without
+being told what they are. <strong>P3 — Streams, Pipes &amp; Text Tools</strong> makes
+them yours: stdin/stdout/stderr, redirection, and the pipeline tricks behind
+<code>docker logs</code> and half of every Dockerfile. <em>P3 lands in this course site
+soon — watch the <a href="../index.html">index</a>.</em></p>
+
+<div class="callout">
+<p class="title">Stuck? Curious?</p>
+<p>Bring questions to class, or open an issue on the
+<a href="https://github.com/pdfarhad/docker-deep-dive/issues">course repo</a> — include
+the command you ran and the output you got. The quizzes above are for self-checking:
+commit to an answer before revealing it, and re-try anything you missed tomorrow.</p>
+</div>
+
+<div class="sources">
+<p><strong>Sources</strong></p>
+<ol>
+<li><a href="https://refspecs.linuxfoundation.org/FHS_3.0/fhs/index.html">Filesystem Hierarchy Standard 3.0</a> (what each top-level directory is for)</li>
+<li><a href="https://man7.org/linux/man-pages/man7/credentials.7.html">man7 — credentials(7)</a> (uid/gid, process identity)</li>
+<li><a href="https://linuxcommand.org/tlcl.php">Shotts — The Linux Command Line, ch. 9</a> (mode strings, chmod, chown, su)</li>
+<li><a href="https://man7.org/linux/man-pages/man7/path_resolution.7.html">man7 — path_resolution(7)</a> (the owner→group→other check, directory execute bit)</li>
+<li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html">OWASP — Docker Security Cheat Sheet</a> (containers-as-root risk, USER)</li>
+<li><a href="https://docs.docker.com/reference/dockerfile/">Docker Docs — Dockerfile reference</a> (USER, COPY --chown)</li>
+</ol>
+</div>
+
+<div class="next">
+<span>← <a href="p1-the-terminal-and-the-shell.html">P1: The Terminal &amp; the Shell</a></span>
+<span><a href="../index.html">P3 coming soon — back to index →</a></span>
+</div>
+
+</main>
+<footer class="colophon">Docker Deep Dive · Prerequisite P2 · authored 2026-07-17 · labs
+verified on the instructor's machine (Engine 20.10.12, ubuntu:24.04, kernel 5.10.76-linuxkit) the
+same day</footer>
+<script src="../assets/course-map.js"></script>
+<script src="../assets/nav.js"></script>
+<script src="../assets/snippet.js"></script>
+<script src="../assets/anim.js"></script>
+<script type="module" src="../assets/quiz.js"></script>
+</body>
+</html>

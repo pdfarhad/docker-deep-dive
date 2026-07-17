@@ -1,0 +1,24 @@
+.quiz { margin: 2rem 0; padding: 1rem 1.25rem; border: 1px solid #e2e8f0;
+  border-radius: 8px; background: #f8fafc; font: inherit; }
+.quiz .q { margin: 0 0 1.25rem; }
+.quiz .q:last-child { margin-bottom: 0; }
+.quiz .prompt { font-weight: 600; margin: 0 0 .5rem; }
+
+.quiz .choices { list-style: none; margin: 0; padding: 0; }
+.quiz .choices > li { border: 1px solid #cbd5e1; border-radius: 6px;
+  padding: .4rem .7rem; margin: .3rem 0; }
+.quiz .quiz-choice { cursor: pointer; }
+.quiz .quiz-choice:hover { background: #eef2ff; }
+.quiz .quiz-correct { background: #dcfce7; border-color: #16a34a; }
+.quiz .quiz-incorrect { background: #fee2e2; border-color: #dc2626; }
+
+.quiz .answer { display: none; margin: .5rem 0 0; padding: .5rem .7rem;
+  border-left: 3px solid #16a34a; background: #f0fdf4; }
+.quiz .answer.quiz-shown { display: block; }
+
+.quiz .quiz-ui { margin-top: .6rem; display: flex; gap: .5rem; flex-wrap: wrap; }
+.quiz .quiz-ui button { border: 1px solid #cbd5e1; background: #fff; border-radius: 6px;
+  padding: .35rem .7rem; cursor: pointer; font: inherit; }
+.quiz .quiz-ui button:hover { background: #eef2ff; }
+.quiz .quiz-ui button:disabled { opacity: .5; cursor: default; }
+.quiz .quiz-unsaved { color: #b45309; font-size: .85em; width: 100%; }

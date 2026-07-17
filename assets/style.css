@@ -1,0 +1,272 @@
+/* Shared stylesheet for all Docker Hands-On lessons & reference docs. */
+
+:root {
+  --bg: #fffdf6;
+  --ink: #22242a;
+  --muted: #6d7178;
+  --faint: #9aa0a8;
+  --accent: #0f62b7;      /* docker-ish blue */
+  --accent-ink: #0a4d92;
+  --green: #0a7d54;
+  --amber-bg: #fdf3dd;
+  --amber-edge: #e4c37a;
+  --blue-bg: #eef4fc;
+  --blue-edge: #b9d2ee;
+  --green-bg: #ecf7f1;
+  --green-edge: #a9d8c2;
+  --card: #faf7ee;
+  --border: #e5e0d2;
+  --code-bg: #f5f2e9;
+  --code-ink: #2d2f36;
+  --output-bg: #fbfaf4;
+  --serif: "Charter", "Iowan Old Style", "Georgia", "Times New Roman", serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 18px/1.65 var(--serif);
+  padding: 3rem 1.25rem 5rem;
+}
+
+main { max-width: 46rem; margin: 0 auto; }
+
+/* ---------- header ---------- */
+
+.kicker {
+  font: 600 12px/1.4 var(--mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 .6rem;
+}
+
+h1 {
+  font-size: 2.3rem;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  margin: 0 0 .5rem;
+}
+
+.lede {
+  font-size: 1.18rem;
+  line-height: 1.55;
+  color: var(--muted);
+  margin: 0 0 1rem;
+}
+
+.meta {
+  font: 500 13px/1.6 var(--mono);
+  color: var(--faint);
+  margin-bottom: 2.2rem;
+}
+.meta a { color: var(--faint); }
+
+h2 {
+  font-size: 1.45rem;
+  margin: 3rem 0 .8rem;
+  letter-spacing: -.005em;
+}
+h2 .no { color: var(--faint); font-weight: 400; margin-right: .35rem; }
+
+h3 { font-size: 1.1rem; margin: 2rem 0 .5rem; }
+
+p, ul, ol { margin: 0 0 1rem; }
+li { margin-bottom: .35rem; }
+
+a { color: var(--accent-ink); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+strong { font-weight: 700; }
+
+hr { border: 0; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+/* ---------- progress strip ---------- */
+
+.progress {
+  display: flex; gap: 7px; align-items: center;
+  margin: 0 0 2.4rem;
+}
+.progress span {
+  width: 11px; height: 11px; border-radius: 50%;
+  background: var(--border);
+}
+.progress span.done { background: var(--green); }
+.progress span.here { background: var(--accent); outline: 3px solid var(--blue-bg); }
+.progress em { font: 500 12px var(--mono); color: var(--faint); font-style: normal; margin-left: 6px; }
+
+/* ---------- code ---------- */
+
+code {
+  font: 0.86em var(--mono);
+  background: var(--code-bg);
+  padding: .1em .35em;
+  border-radius: 4px;
+}
+
+pre {
+  position: relative;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  line-height: 1.55;
+  margin: 0 0 1rem;
+}
+pre code { background: none; padding: 0; font-size: 14px; display: block; }
+
+/* copyable command / file blocks (snippet.js adds the button) */
+pre.cmd { background: #14181f; border-color: #14181f; }
+pre.cmd code { color: #e8e6df; }
+pre.cmd .comment { color: #8f97a3; }
+
+pre[data-label]::before {
+  content: attr(data-label);
+  position: absolute; top: -9px; left: 12px;
+  font: 600 10.5px var(--mono);
+  letter-spacing: .08em; text-transform: uppercase;
+  background: var(--bg);
+  color: var(--muted);
+  padding: 0 7px; border-radius: 4px;
+}
+pre.cmd[data-label]::before { color: var(--accent); }
+
+/* expected output — deliberately not copyable-looking */
+pre.output {
+  background: var(--output-bg);
+  border-style: dashed;
+}
+pre.output code { color: var(--muted); font-size: 13px; }
+
+.copy-btn {
+  position: absolute; top: 8px; right: 8px;
+  font: 600 11px var(--mono);
+  color: #cfd6df; background: #2a3140;
+  border: 0; border-radius: 6px;
+  padding: 4px 9px; cursor: pointer;
+}
+.copy-btn:hover { background: #39445a; color: #fff; }
+.copy-btn.ok { background: var(--green); color: #fff; }
+
+/* ---------- callouts ---------- */
+
+.callout {
+  border: 1px solid var(--blue-edge);
+  background: var(--blue-bg);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin: 0 0 1.2rem;
+  font-size: .95em;
+}
+.callout > :last-child { margin-bottom: 0; }
+.callout .title {
+  font: 700 12px var(--mono);
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--accent-ink);
+  margin: 0 0 .4rem;
+}
+.callout.warn { background: var(--amber-bg); border-color: var(--amber-edge); }
+.callout.warn .title { color: #8a6414; }
+.callout.win { background: var(--green-bg); border-color: var(--green-edge); }
+.callout.win .title { color: var(--green); }
+
+/* ---------- figures ---------- */
+
+figure.diagram {
+  margin: 1.6rem 0 1.8rem;
+  padding: 18px 14px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+figure.diagram svg { display: block; width: 100%; height: auto; }
+figure.diagram figcaption {
+  font-size: .82em; color: var(--muted);
+  line-height: 1.5; margin-top: .7rem; padding: 0 6px;
+}
+
+/* ---------- tables ---------- */
+
+table { border-collapse: collapse; width: 100%; margin: 0 0 1.2rem; font-size: .92em; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font: 600 12px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+td code { white-space: nowrap; }
+
+/* ---------- lesson furniture ---------- */
+
+.sources { font-size: .85em; color: var(--muted); }
+.sources ol { padding-left: 1.2rem; }
+
+.next {
+  display: flex; justify-content: space-between; gap: 1rem;
+  border-top: 1px solid var(--border);
+  margin-top: 3rem; padding-top: 1.2rem;
+  font-size: .95em;
+}
+
+footer.colophon {
+  max-width: 46rem; margin: 3rem auto 0;
+  font: 500 12px/1.7 var(--mono); color: var(--faint);
+  border-top: 1px solid var(--border); padding-top: 1rem;
+}
+
+/* ---------- step-through animations (anim.js) ---------- */
+
+figure[data-anim] .anim-cap { display: none; }
+
+figure[data-anim].anim-ready .anim-el {
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity .45s ease, transform .45s ease;
+}
+figure[data-anim].anim-ready .anim-el.on { opacity: 1; transform: none; }
+
+.pulse { transform-box: fill-box; transform-origin: center; }
+figure[data-anim].anim-ready .current .pulse,
+figure[data-anim].anim-ready .current.pulse { animation: beat 1.1s ease-in-out infinite; }
+
+.flow { stroke-dasharray: 7 5; }
+.flow.always,
+figure[data-anim].anim-ready .current .flow,
+figure[data-anim].anim-ready .current.flow { animation: flowdash .9s linear infinite; }
+
+@keyframes flowdash { to { stroke-dashoffset: -12; } }
+@keyframes beat { 50% { transform: scale(1.07); } }
+
+.anim-controls {
+  display: flex; align-items: center; gap: 8px;
+  margin: 10px 4px 0;
+  font: 500 12.5px var(--mono); color: var(--muted);
+}
+.anim-controls button {
+  font: 600 12px var(--mono);
+  border: 1px solid var(--border); background: #fff; color: var(--accent-ink);
+  border-radius: 7px; padding: 4px 10px; cursor: pointer;
+}
+.anim-controls button:hover { border-color: var(--accent); }
+.ab-cap { flex: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  figure[data-anim].anim-ready .anim-el { transition: none; }
+  .flow.always, .flow, .pulse { animation: none !important; }
+}
+
+/* ---------- print ---------- */
+
+@media print {
+  body { background: #fff; font-size: 11pt; padding: 0; }
+  .copy-btn, .progress, section.quiz, .no-print, .next { display: none !important; }
+  pre.cmd { background: #f2f2f2; border: 1px solid #ccc; }
+  pre.cmd code { color: #111; }
+  figure.diagram { break-inside: avoid; }
+  a { color: inherit; text-decoration: none; }
+  figure[data-anim] .anim-el { opacity: 1 !important; transform: none !important; }
+  .anim-controls { display: none !important; }
+}

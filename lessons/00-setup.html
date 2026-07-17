@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00 · Setup — Docker Deep Dive</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body data-lesson="00-setup">
+<main>
+
+<p class="kicker">Docker Deep Dive · Setup</p>
+<h1>00 · Setup</h1>
+<p class="lede">Get a <strong>current</strong> Docker running on your machine — macOS,
+Windows, or Linux. Ten minutes, once, and every lab in this course works.</p>
+<p class="meta">⏱ ~10 min · labs repo:
+<a href="https://github.com/pdfarhad/docker-hands-on">pdfarhad/docker-hands-on</a></p>
+
+<h2><span class="no">1</span>Install (or update!)</h2>
+
+<p>Docker moves fast — an install from a year or two ago is missing tools this course
+uses later. If you installed it a while ago, update now: <strong>Docker Desktop menu →
+Check for Updates</strong>, or reinstall fresh.</p>
+
+<table>
+<tr><th>OS</th><th>get it</th></tr>
+<tr><td>macOS</td><td><a href="https://docs.docker.com/desktop/setup/install/mac-install/">Docker Desktop for Mac</a> (pick Apple Silicon or Intel)</td></tr>
+<tr><td>Windows</td><td><a href="https://docs.docker.com/desktop/setup/install/windows-install/">Docker Desktop for Windows</a> (WSL 2 backend)</td></tr>
+<tr><td>Linux</td><td><a href="https://docs.docker.com/engine/install/">Docker Engine</a> (Desktop optional)</td></tr>
+</table>
+
+<p>On macOS and Windows, Docker Desktop quietly runs a small <strong>Linux virtual
+machine</strong> — containers are Linux processes, and that VM provides the Linux kernel
+they share. On Linux, your own kernel does the job directly. You'll feel this once in
+Lesson 1; otherwise it's invisible.</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 720 240" font-family="ui-monospace, Menlo, monospace" font-size="12">
+  <text x="185" y="26" text-anchor="middle" font-weight="700" fill="#22242a">macOS · Windows</text>
+  <rect x="60" y="40" width="80" height="38" rx="12" fill="#ecf7f1" stroke="#a9d8c2"/>
+  <text x="100" y="64" text-anchor="middle" fill="#0a7d54">app A</text>
+  <rect x="150" y="40" width="80" height="38" rx="12" fill="#ecf7f1" stroke="#a9d8c2"/>
+  <text x="190" y="64" text-anchor="middle" fill="#0a7d54">app B</text>
+  <rect x="240" y="40" width="80" height="38" rx="12" fill="#ecf7f1" stroke="#a9d8c2"/>
+  <text x="280" y="64" text-anchor="middle" fill="#0a7d54">app C</text>
+  <rect x="40" y="90" width="290" height="32" rx="6" fill="#eef4fc" stroke="#b9d2ee"/>
+  <text x="185" y="110" text-anchor="middle" fill="#0a4d92">small hidden Linux VM (its kernel)</text>
+  <rect x="40" y="130" width="290" height="32" rx="6" fill="#f5f2e9" stroke="#e5e0d2"/>
+  <text x="185" y="150" text-anchor="middle" fill="#6d7178">Docker Desktop</text>
+  <rect x="40" y="170" width="290" height="32" rx="6" fill="#e9e5d8" stroke="#e5e0d2"/>
+  <text x="185" y="190" text-anchor="middle" fill="#6d7178">macOS / Windows kernel</text>
+
+  <text x="535" y="26" text-anchor="middle" font-weight="700" fill="#22242a">Linux</text>
+  <rect x="410" y="40" width="80" height="38" rx="12" fill="#ecf7f1" stroke="#a9d8c2"/>
+  <text x="450" y="64" text-anchor="middle" fill="#0a7d54">app A</text>
+  <rect x="500" y="40" width="80" height="38" rx="12" fill="#ecf7f1" stroke="#a9d8c2"/>
+  <text x="540" y="64" text-anchor="middle" fill="#0a7d54">app B</text>
+  <rect x="590" y="40" width="80" height="38" rx="12" fill="#ecf7f1" stroke="#a9d8c2"/>
+  <text x="630" y="64" text-anchor="middle" fill="#0a7d54">app C</text>
+  <rect x="390" y="90" width="290" height="32" rx="6" fill="#f5f2e9" stroke="#e5e0d2"/>
+  <text x="535" y="110" text-anchor="middle" fill="#6d7178">Docker Engine</text>
+  <rect x="390" y="130" width="290" height="72" rx="6" fill="#dfe9f6" stroke="#b9d2ee"/>
+  <text x="535" y="170" text-anchor="middle" fill="#0a4d92" font-weight="700">your own Linux kernel</text>
+
+  <text x="360" y="228" text-anchor="middle" fill="#6d7178">either way: containers share ONE Linux kernel — the course explains why that matters</text>
+</svg>
+<figcaption><strong>Why any OS works for this course.</strong> Containers always run on
+a Linux kernel; Desktop brings one along on macOS/Windows, Linux already has one. The
+labs are identical on all three.</figcaption>
+</figure>
+
+<h2><span class="no">2</span>Verify</h2>
+
+<p>Start Docker Desktop (whale icon in the menu bar / system tray), then — in any
+terminal (PowerShell is fine on Windows):</p>
+
+<pre class="cmd" data-label="terminal"><code>docker version</code></pre>
+
+<p>You should see both a <strong>Client</strong> and a <strong>Server</strong> section.
+If instead you get <code>Cannot connect to the Docker daemon</code> — Docker Desktop
+isn't running; start it and retry. Then the classic:</p>
+
+<pre class="cmd" data-label="terminal"><code>docker run --rm hello-world</code></pre>
+
+<pre class="output" data-label="expected output (abridged — the architecture line varies)"><code>Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
+ 3. The Docker daemon created a new container from that image which runs the
+    executable that produces the output you are currently reading.
+ 4. The Docker daemon streamed that output to the Docker client, which sent it
+    to your terminal.</code></pre>
+
+<p>Congratulations — that was a container. Lesson 1 dissects what just happened.</p>
+
+<h2><span class="no">3</span>Get the labs</h2>
+
+<p>Every lesson pairs with a folder of runnable labs in the companion repo. Clone it
+once; <code>git pull</code> before each lesson (it grows with the course):</p>
+
+<pre class="cmd" data-label="terminal"><code>git clone https://github.com/pdfarhad/docker-hands-on.git
+cd docker-hands-on</code></pre>
+
+<h2><span class="no">4</span>Optional: log in to Docker Hub</h2>
+
+<p>Anonymous pulls from Docker Hub are rate-limited (per 6 h, per IP). This course stays
+well under the limit, but a free account removes the worry and is needed later for
+pushing your own image:<a class="cite" href="https://docs.docker.com/docker-hub/usage/pulls/">¹</a></p>
+
+<pre class="cmd" data-label="terminal"><code>docker login</code></pre>
+
+<h2><span class="no">5</span>Troubleshooting</h2>
+
+<table>
+<tr><th>symptom</th><th>fix</th></tr>
+<tr><td><code>command not found: docker</code></td><td>Desktop installed but the CLI isn't on PATH yet — restart your terminal (Desktop adds it), or reinstall.</td></tr>
+<tr><td>every pull fails with <code>401 Unauthorized</code></td><td>a stale Docker Hub login is sending expired credentials. <code>docker logout</code> clears it (anonymous pulls work again); <code>docker login</code> whenever you like.</td></tr>
+<tr><td>pulls fail with <code>429 Too Many Requests</code></td><td>rate limit hit (shared office/campus IP?) — <code>docker login</code> with a free account.</td></tr>
+<tr><td>daemon never becomes ready</td><td>open Docker Desktop's Dashboard; it shows the engine state and error. <em>Troubleshoot → Restart</em> fixes most sulks.</td></tr>
+</table>
+
+<div class="callout win">
+<p class="title">You're ready when</p>
+<ul>
+<li><code>docker version</code> shows Client <em>and</em> Server sections.</li>
+<li><code>docker run --rm hello-world</code> prints its greeting.</li>
+<li><code>docker-hands-on/</code> is cloned somewhere you can find it.</li>
+</ul>
+<p>Start with <a href="p1-the-terminal-and-the-shell.html">P1: The Terminal &amp; the
+Shell</a> — it assumes nothing but this page.</p>
+</div>
+
+<div class="callout">
+<p class="title">Stuck?</p>
+<p>Bring it to class, or open an issue on the
+<a href="https://github.com/pdfarhad/docker-deep-dive/issues">course repo</a> — include
+your OS, the command you ran, and the full error text.</p>
+</div>
+
+<div class="sources">
+<p><strong>Sources</strong></p>
+<ol>
+<li><a href="https://docs.docker.com/docker-hub/usage/pulls/">Docker Docs — Docker Hub usage and limits</a></li>
+<li><a href="https://docs.docker.com/desktop/">Docker Docs — Docker Desktop</a> (install guides per OS)</li>
+</ol>
+</div>
+
+<div class="next">
+<span>↩ <a href="../index.html">course index</a></span>
+<span><a href="p1-the-terminal-and-the-shell.html">P1: The Terminal &amp; the Shell →</a></span>
+</div>
+
+</main>
+<footer class="colophon">Docker Deep Dive · 00 Setup · flow verified on the instructor's
+machine, July 2026</footer>
+<script src="../assets/course-map.js"></script>
+<script src="../assets/nav.js"></script>
+<script src="../assets/snippet.js"></script>
+</body>
+</html>

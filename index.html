@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docker Deep Dive — Course</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .toc { list-style: none; padding: 0; margin: 0 0 1rem; }
+  .toc li { margin: 0; }
+  .toc a {
+    display: flex; gap: 12px; align-items: baseline;
+    padding: 10px 10px; border-bottom: 1px solid var(--border);
+    text-decoration: none; color: var(--ink);
+  }
+  .toc a:hover { background: var(--card); }
+  .toc .n { font: 700 13px var(--mono); color: var(--accent-ink); min-width: 1.9em; }
+  .toc .t { font-weight: 700; }
+  .toc .d { color: var(--muted); font-size: .9em; }
+  .toc .min { margin-left: auto; font: 500 11.5px var(--mono); color: var(--faint); white-space: nowrap; }
+  .toc li.soon { display: flex; gap: 12px; align-items: baseline; padding: 10px 10px;
+    border-bottom: 1px dashed var(--border); color: var(--faint); }
+  .toc li.soon .n { font: 700 13px var(--mono); min-width: 1.9em; }
+  h2.phase { font-size: 1.05rem; margin-top: 2.2rem; }
+  h2.phase .no { font-family: var(--mono); font-size: .75em; }
+</style>
+</head>
+<body>
+<main>
+
+<p class="kicker">Docker Deep Dive · Course Index</p>
+<h1>🐳 Docker Deep Dive</h1>
+<p class="lede">A hands-on Docker course that starts from the terminal up: first the
+Linux floor every container stands on, then Docker itself. Lessons are published here
+as the course progresses — check back, or watch the repo.</p>
+<p class="meta">labs repo:
+<a href="https://github.com/pdfarhad/docker-hands-on">pdfarhad/docker-hands-on</a>
+· reference: <a href="reference/linux-shell-cheatsheet.html">Linux &amp; shell cheatsheet</a></p>
+
+<div class="callout">
+<p class="title">How this course works</p>
+<ul>
+<li><strong>Read a lesson → run its lab chapter → take the self-check quiz.</strong>
+Labs live in the <a href="https://github.com/pdfarhad/docker-hands-on">labs repo</a>;
+clone once, <code>git pull</code> before each lesson.</li>
+<li>Everything runs on <strong>macOS, Windows, or Linux</strong> — labs happen inside a
+disposable Ubuntu container, identical on every OS.</li>
+<li>The ☰ button (top right, on every page) jumps between lessons; diagrams marked
+<em>▶ play</em> are animated — step through them.</li>
+<li>Quizzes grade themselves in your browser — commit to an answer before revealing.</li>
+</ul>
+<pre class="cmd" data-label="terminal"><code>git clone https://github.com/pdfarhad/docker-hands-on.git</code></pre>
+</div>
+
+<h2 class="phase"><span class="no">start ·</span> Getting set up</h2>
+<ol class="toc">
+<li><a href="lessons/00-setup.html"><span class="n">00</span>
+  <span><span class="t">Setup</span><br><span class="d">install Docker, verify it, clone the labs — any OS</span></span>
+  <span class="min">~10 min</span></a></li>
+</ol>
+
+<h2 class="phase"><span class="no">phase 0 ·</span> Prerequisites — the Linux runway</h2>
+<ol class="toc">
+<li><a href="lessons/p1-the-terminal-and-the-shell.html"><span class="n">P1</span>
+  <span><span class="t">The Terminal &amp; the Shell</span><br><span class="d">terminal vs shell vs kernel; navigate and manage files — in a container that's identical everywhere</span></span>
+  <span class="min">~25 min</span></a></li>
+<li><a href="lessons/p2-files-permissions-and-root.html"><span class="n">P2</span>
+  <span><span class="t">Files, Permissions &amp; root</span><br><span class="d">the filesystem tree, mode strings, chmod/chown — and why containers run as root</span></span>
+  <span class="min">~25 min</span></a></li>
+<li class="soon"><span class="n">P3</span><span>Streams, Pipes &amp; Text Tools — <em>coming soon</em></span></li>
+<li class="soon"><span class="n">P4</span><span>Processes, Environments &amp; Signals — <em>coming soon</em></span></li>
+<li class="soon"><span class="n">…</span><span>more prerequisites, then the Docker lessons — published as the course progresses</span></li>
+</ol>
+
+<h2 class="phase"><span class="no">§ ·</span> Reference (prints well)</h2>
+<ol class="toc">
+<li><a href="reference/linux-shell-cheatsheet.html"><span class="n">§</span>
+  <span><span class="t">Linux &amp; Shell Cheatsheet</span><br><span class="d">navigation, permissions, pipes, signals, /proc, ports, scripts — the whole runway on a few printable pages</span></span>
+  <span class="min">⌘P</span></a></li>
+</ol>
+
+<div class="callout">
+<p class="title">Questions?</p>
+<p>Bring them to class, or open an issue on
+<a href="https://github.com/pdfarhad/docker-deep-dive/issues">pdfarhad/docker-deep-dive</a> —
+include the command you ran and the output you got.</p>
+</div>
+
+</main>
+<footer class="colophon">Docker Deep Dive · lessons verified on the instructor's machine
+before publishing · July 2026</footer>
+<script src="assets/snippet.js"></script>
+<script src="assets/course-map.js"></script>
+<script src="assets/nav.js"></script>
+</body>
+</html>
