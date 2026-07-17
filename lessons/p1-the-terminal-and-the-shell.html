@@ -303,7 +303,7 @@ really is:</p>
 
 <pre class="cmd" data-label="on YOUR machine"><code>type ls          <span class="comment"># bash/zsh (PowerShell: Get-Command ls)</span></code></pre>
 
-<pre class="output" data-label="my run (2026-07-17) — three machines, three answers"><code># macOS (the zsh this course was verified on — themed setup):
+<pre class="output" data-label="my run (2026-07-17) — three machines, three answers"><code># macOS (the instructor's themed zsh):
 ls is an alias for eza --icons --grid --group-directories-first
 
 # ubuntu:24.04 container (interactive bash):
@@ -322,19 +322,28 @@ Windows PowerShell maps it to a completely different program,
 builtins, and real binaries — ask it whenever a command behaves unlike the tutorial
 you're reading.</p>
 
-<p>Even the "real" <code>ls</code> differs by host: macOS ships the BSD flavor, Linux
-ships GNU. Same name, different dialects:</p>
+<p>Even the "real" <code>ls</code> (aliases aside) differs by host — same name, three
+different programs:<a class="cite" href="https://www.gnu.org/software/coreutils/manual/">³</a></p>
 
-<pre class="cmd" data-label="macOS host — BSD userland"><code>/bin/ls --version</code></pre>
-<pre class="output" data-label="my run (2026-07-17) — BSD ls has no --version"><code>ls: unrecognized option `--version'
-usage: ls [-@ABCFGHILOPRSTUWXabcdefghiklmnopqrstuvwxy1%,] [--color=when] [-D format] [file ...]</code></pre>
+<table>
+<tr><th>host</th><th>what answers to "ls"</th><th>tell-tale</th></tr>
+<tr><td>macOS</td><td>BSD <code>ls</code></td><td><code>/bin/ls --version</code> → <code>unrecognized option</code> — BSD has no <code>--version</code></td></tr>
+<tr><td>Linux</td><td>GNU <code>ls</code> (coreutils)</td><td><code>ls --version</code> → <code>ls (GNU coreutils) …</code></td></tr>
+<tr><td>Windows PowerShell</td><td><code>Get-ChildItem</code> — not <code>ls</code> at all</td><td>Unix flags like <code>ls -lah</code> simply error</td></tr>
+</table>
 
-<p>Inside the ubuntu container the same command answers
-<code>ls (GNU coreutils) 9.4</code> (my run, 2026-07-17).<a class="cite" href="https://www.gnu.org/software/coreutils/manual/">³</a>
-This is the point of the whole section: <strong>your host is a dialect; the container is
-the standard.</strong> Whatever terminal you own — zsh on a Mac, bash on Fedora,
-PowerShell on Windows — the <code>linuxbox</code> gives every learner the identical GNU/Linux
-environment, and that's the dialect Dockerfiles and Kubernetes manifests speak.</p>
+<p>You only own one of those rows — no need to test the others. The check
+<em>everyone</em> can run, because every learner has the same container:</p>
+
+<pre class="cmd" data-label="inside linuxbox — same answer for every student"><code>ls --version</code></pre>
+<pre class="output" data-label="my run (2026-07-17)"><code>ls (GNU coreutils) 9.4
+Copyright (C) 2023 Free Software Foundation, Inc.</code></pre>
+
+<p>This is the point of the whole section: <strong>your host is a dialect; the container
+is the standard.</strong> Whatever terminal you own — zsh on a Mac, bash on Fedora,
+PowerShell on Windows — the <code>linuxbox</code> gives every learner the identical
+GNU/Linux environment, and that's the dialect Dockerfiles and Kubernetes manifests
+speak.</p>
 
 <div class="callout">
 <p class="title">Windows users — two good options</p>
