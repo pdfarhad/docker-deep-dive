@@ -14,6 +14,6 @@ window.COURSE_MAP = {
     { title: "Linux & Shell Cheatsheet", path: "reference/linux-shell-cheatsheet.html" },
   ],
   external: [
-    { title: "Labs repo — pdfarhad/docker-hands-on", url: "https://github.com/pdfarhad/docker-hands-on" },
+    { title: "Labs repo — pdfarhad/docker-deep-dive", url: "https://github.com/pdfarhad/docker-deep-dive" },
   ],
 };

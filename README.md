@@ -5,8 +5,8 @@ container stands on, then Docker itself.
 
 **📖 Read the course:** https://pdfarhad.github.io/docker-deep-dive/
 
-**🧪 Run the labs:** [pdfarhad/docker-hands-on](https://github.com/pdfarhad/docker-hands-on)
-— every lesson pairs with a runnable chapter there.
+**🧪 Run the labs:** clone this repo — every lesson pairs with a runnable chapter
+folder (e.g. [`p1-terminal-and-shell/`](p1-terminal-and-shell)) right here.
 
 Works on **macOS, Windows, and Linux**: labs run inside a disposable Ubuntu container,
 so every learner gets an identical environment.

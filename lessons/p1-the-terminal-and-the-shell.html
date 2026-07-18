@@ -17,7 +17,7 @@
 <code>kubectl exec</code> lands you here — so before the whale, meet the three programs
 hiding behind your blinking cursor.</p>
 <p class="meta">⏱ ~25 min hands-on · repo chapter
-<a href="https://github.com/pdfarhad/docker-hands-on/tree/main/p1-terminal-and-shell">p1-terminal-and-shell</a>
+<a href="https://github.com/pdfarhad/docker-deep-dive/tree/main/p1-terminal-and-shell">p1-terminal-and-shell</a>
 · cheatsheet: <a href="../reference/linux-shell-cheatsheet.html">Linux &amp; Shell</a>
 · works on macOS, Windows, and Linux</p>
 
@@ -29,12 +29,12 @@ hiding behind your blinking cursor.</p>
 <div class="callout">
 <p class="title">Before you start — any OS is fine</p>
 <p>You need Docker Desktop (or Docker Engine on Linux) installed and running — chapter
-<a href="https://github.com/pdfarhad/docker-hands-on/tree/main/00-setup">00-setup</a>.
+<a href="https://github.com/pdfarhad/docker-deep-dive/tree/main/00-setup">00-setup</a>.
 Not because this lesson is about Docker, but because your computer probably isn't Linux —
 and even if it is, a container is the fastest <em>disposable</em> Linux machine you'll
 ever own. The main lab runs inside one, so it is <strong>identical on macOS, Windows,
 and Linux</strong>. Grab the chapter:</p>
-<pre class="cmd" data-label="terminal (macOS/Linux: any shell · Windows: PowerShell)"><code>cd docker-hands-on
+<pre class="cmd" data-label="terminal (macOS/Linux: any shell · Windows: PowerShell)"><code>cd docker-deep-dive
 git pull
 cd p1-terminal-and-shell</code></pre>
 <p>Every <code>docker …</code> line in this course is the same on all three OSes. If you
@@ -374,7 +374,7 @@ Lesson 1, and it's why anything worth keeping lives in an image (Lesson 3) or a 
 the tree you built. Exit the box, then — from the chapter folder — start one that can
 see it (<code>-v</code> shares the folder at <code>/labs</code>; lesson 5 explains):</p>
 
-<pre class="cmd" data-label="macOS / Linux / WSL — from docker-hands-on/p1-terminal-and-shell"><code>exit
+<pre class="cmd" data-label="macOS / Linux / WSL — from docker-deep-dive/p1-terminal-and-shell"><code>exit
 docker rm linuxbox
 docker run -it --rm -v "$PWD":/labs ubuntu:24.04 bash</code></pre>
 
